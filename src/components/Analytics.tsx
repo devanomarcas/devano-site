@@ -3,7 +3,7 @@ import Script from "next/script";
 // Google Analytics 4
 // Substitua "G-XXXXXXXXXX" pelo seu ID de medição (Measurement ID),
 // que você obtém ao criar uma propriedade no Google Analytics.
-const GA_ID = "G-XXXXXXXXXX";
+const GA_ID = "G-5PV0MCRK1F";
 
 export default function Analytics() {
   // Não carrega enquanto o ID for o placeholder
