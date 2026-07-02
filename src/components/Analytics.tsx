@@ -7,7 +7,7 @@ const GA_ID = "G-5PV0MCRK1F";
 
 export default function Analytics() {
   // Não carrega enquanto o ID for o placeholder
-  if (!GA_ID || GA_ID === "G-XXXXXXXXXX") return null;
+  if (!GA_ID || GA_ID === "G-5PV0MCRK1F") return null;
 
   return (
     <>
