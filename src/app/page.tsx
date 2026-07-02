@@ -325,7 +325,7 @@ export default function Home() {
             Se essa pergunta é difícil de responder, é um bom ponto de partida para
             conversarmos.
           </p>
-          <a className="btn btn-primary reveal" href="https://www.instagram.com/devano.branding/" target="_blank" rel="noopener">
+          <a className="btn btn-primary reveal" href="https://wa.me/5584999951006?text=Ol%C3%A1%2C%20vim%20atrav%C3%A9s%20da%20landing%20page%20da%20Devano%2C%20gostaria%20de%20saber%20mais%20sobre%20suas%20solu%C3%A7%C3%B5es." target="_blank" rel="noopener">
             Iniciar uma conversa
           </a>
         </div>
