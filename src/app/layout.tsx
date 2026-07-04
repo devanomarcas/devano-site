@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Analytics from "@/components/Analytics";
+import NewsletterPopup from "@/components/NewsletterPopup";
 import "./globals.css";
 
 const DESC =
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        <NewsletterPopup />
         <Analytics />
       </body>
     </html>

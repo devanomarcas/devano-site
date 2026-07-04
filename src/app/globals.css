@@ -238,3 +238,34 @@ footer .cols a:hover { color: var(--tinta); }
 .review .who .nome { font-size: 14px; font-weight: var(--peso-corpo-forte); color: var(--tinta); }
 .review .who .meta { font-size: 12px; color: var(--cinza-claro); letter-spacing: 0.02em; }
 @media (max-width: 760px) { .reviews-grid { grid-template-columns: 1fr; } }
+
+/* ===== NEWSLETTER ===== */
+.nl-grid { display: grid; grid-template-columns: 1fr 0.9fr; gap: 64px; align-items: center; }
+.nl-form-wrap { display: flex; flex-direction: column; }
+.nl-form { display: flex; gap: 10px; flex-wrap: wrap; }
+.nl-form input { flex: 1; min-width: 220px; padding: 15px 18px; border: 1px solid var(--linha); border-radius: 2px; background: var(--gelo); color: var(--tinta); font-family: inherit; font-size: 15px; font-weight: var(--peso-corpo); outline: none; transition: border-color 0.2s; }
+.nl-form input:focus { border-color: var(--musgo); }
+.nl-form .btn { white-space: nowrap; }
+.nl-ok { font-size: 17px; color: var(--musgo); font-weight: var(--peso-corpo-forte); line-height: 1.5; }
+.nl-erro { font-size: 14px; color: #a3402f; margin-top: 12px; }
+.nl-nota { font-size: 12px; color: var(--cinza-claro); margin-top: 16px; letter-spacing: 0.02em; }
+@media (max-width: 860px) { .nl-grid { grid-template-columns: 1fr; gap: 32px; } }
+
+/* ===== POP-UP NEWSLETTER ===== */
+.popup-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(26, 28, 25, 0.55); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 24px; animation: popup-fade 0.3s ease; }
+@keyframes popup-fade { from { opacity: 0; } to { opacity: 1; } }
+.popup { position: relative; background: var(--gelo); max-width: 460px; width: 100%; padding: 48px 44px 40px; border-radius: 3px; box-shadow: 0 24px 60px rgba(26, 28, 25, 0.28); animation: popup-rise 0.4s ease; }
+@keyframes popup-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.popup-close { position: absolute; top: 16px; right: 18px; background: none; border: none; font-size: 26px; line-height: 1; color: var(--cinza-claro); cursor: pointer; transition: color 0.2s; }
+.popup-close:hover { color: var(--tinta); }
+.popup-label { color: var(--musgo); font-weight: var(--peso-corpo-forte); font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; margin-bottom: 18px; }
+.popup h3 { font-size: 26px; font-weight: var(--peso-titulo); letter-spacing: -0.015em; line-height: 1.15; margin-bottom: 16px; }
+.popup-texto { font-size: 15px; color: var(--cinza); line-height: 1.6; margin-bottom: 26px; }
+.popup-form { display: flex; flex-direction: column; gap: 10px; }
+.popup-form input { padding: 14px 16px; border: 1px solid var(--linha); border-radius: 2px; background: #fff; color: var(--tinta); font-family: inherit; font-size: 15px; font-weight: var(--peso-corpo); outline: none; transition: border-color 0.2s; }
+.popup-form input:focus { border-color: var(--musgo); }
+.popup-form .btn { justify-content: center; }
+.popup-erro { font-size: 13px; color: #a3402f; margin-top: 12px; }
+.popup-dispensar { display: block; margin: 18px auto 0; background: none; border: none; color: var(--cinza-claro); font-size: 13px; cursor: pointer; letter-spacing: 0.02em; transition: color 0.2s; font-family: inherit; }
+.popup-dispensar:hover { color: var(--cinza); }
+@media (max-width: 520px) { .popup { padding: 40px 28px 32px; } .popup h3 { font-size: 22px; } }

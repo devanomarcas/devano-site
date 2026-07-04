@@ -3,6 +3,7 @@ import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Reveal from "@/components/Reveal";
+import Newsletter from "@/components/Newsletter";
 import { getAllPostsMeta } from "@/lib/posts";
 
 const triangulacao = [
@@ -316,6 +317,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* NEWSLETTER */}
+      <Newsletter />
 
       {/* CTA */}
       <section id="contato" className="final">

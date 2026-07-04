@@ -15,6 +15,7 @@ export default function Nav() {
           <Link href="/#avaliacoes">Avaliações</Link>
           <Link href="/#trabalho">Trabalho</Link>
           <Link href="/blog">Blog</Link>
+          <Link href="/#newsletter">Newsletter</Link>
           <Link href="/#contato" className="navcta">Conversar</Link>
         </div>
       </div>
