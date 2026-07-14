@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // Mesmo username do Buttondown usado no Newsletter.tsx
-const BUTTONDOWN_USER = "devanobranding";
+const BUTTONDOWN_USER = "SEU_USUARIO";
 const STORAGE_KEY = "devano_marketeiros_popup";
 
 export default function NewsletterPopup() {

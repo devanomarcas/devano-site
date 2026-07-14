@@ -1,0 +1,157 @@
+/* ===== PAINEL ADMIN — identidade Devano ===== */
+
+/* LOGIN */
+.admin-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gelo);
+  padding: 24px;
+}
+.admin-login-card {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border: 1px solid var(--linha);
+  border-radius: 3px;
+  padding: 48px 40px 40px;
+}
+.admin-login-logo { display: block; margin-bottom: 8px; }
+.admin-login-sub {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--musgo);
+  font-weight: var(--peso-corpo-forte);
+  margin-bottom: 36px;
+}
+.admin-login-form { display: flex; flex-direction: column; gap: 20px; }
+.admin-login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cinza);
+  font-weight: var(--peso-corpo-forte);
+}
+.admin-login-form input {
+  padding: 13px 15px;
+  border: 1px solid var(--linha);
+  border-radius: 2px;
+  background: var(--gelo);
+  color: var(--tinta);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: var(--peso-corpo);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.admin-login-form input:focus { border-color: var(--musgo); }
+.admin-login-form .btn { justify-content: center; margin-top: 8px; }
+.admin-login-erro { font-size: 13px; color: #a3402f; margin: -4px 0 0; }
+
+/* SHELL (área interna) */
+.admin-shell { min-height: 100vh; background: var(--gelo); }
+.admin-topbar {
+  background: #fff;
+  border-bottom: 1px solid var(--linha);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.admin-topbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-topbar-right { display: flex; align-items: center; gap: 20px; }
+.admin-user { font-size: 13px; color: var(--cinza); }
+.admin-logout {
+  background: none;
+  border: 1px solid var(--linha);
+  border-radius: 2px;
+  padding: 8px 16px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tinta);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.admin-logout:hover { border-color: var(--tinta); }
+
+.admin-main { max-width: 1100px; margin: 0 auto; padding: 64px 32px; }
+.admin-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--musgo);
+  font-weight: var(--peso-corpo-forte);
+  margin-bottom: 20px;
+}
+.admin-title {
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: var(--peso-titulo);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 18px;
+}
+.admin-lead {
+  font-size: 18px;
+  color: var(--cinza);
+  max-width: 56ch;
+  line-height: 1.6;
+  margin-bottom: 56px;
+}
+
+.admin-setores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.admin-setor {
+  background: #fff;
+  border: 1px solid var(--linha);
+  border-radius: 3px;
+  padding: 32px 28px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+.admin-setor.ativo { border-color: var(--musgo); }
+.admin-setor h2 {
+  font-size: 22px;
+  font-weight: var(--peso-titulo);
+  margin-bottom: 10px;
+}
+.admin-setor p {
+  font-size: 14px;
+  color: var(--cinza);
+  line-height: 1.55;
+  margin-bottom: auto;
+}
+.admin-setor-links { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+.admin-chip {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--musgo);
+  border: 1px solid var(--linha);
+  border-radius: 2px;
+  padding: 8px 12px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+a.admin-chip:hover { border-color: var(--musgo); background: var(--gelo); }
+.admin-chip.em-breve { color: var(--cinza-claro); }
+
+@media (max-width: 760px) {
+  .admin-setores { grid-template-columns: 1fr; }
+}

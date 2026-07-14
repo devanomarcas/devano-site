@@ -4,7 +4,7 @@ import { useState } from "react";
 
 // Substitua "SEU_USUARIO" pelo seu username do Buttondown
 // (aparece na URL da sua conta: buttondown.com/SEU_USUARIO).
-const BUTTONDOWN_USER = "devanobranding";
+const BUTTONDOWN_USER = "SEU_USUARIO";
 
 export default function Newsletter() {
   const [email, setEmail] = useState("");
