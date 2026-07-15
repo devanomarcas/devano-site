@@ -2,10 +2,6 @@
 
 import { useState } from "react";
 
-// Substitua "SEU_USUARIO" pelo seu username do Buttondown
-// (aparece na URL da sua conta: buttondown.com/SEU_USUARIO).
-const BUTTONDOWN_USER = "SEU_USUARIO";
-
 export default function Newsletter() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "erro">("idle");
@@ -15,14 +11,11 @@ export default function Newsletter() {
     if (!email || status === "loading") return;
     setStatus("loading");
     try {
-      const res = await fetch(
-        `https://buttondown.com/api/emails/embed-subscribe/${BUTTONDOWN_USER}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ email }),
-        }
-      );
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
       if (res.ok) {
         setStatus("ok");
         setEmail("");

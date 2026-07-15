@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-// Mesmo username do Buttondown usado no Newsletter.tsx
-const BUTTONDOWN_USER = "SEU_USUARIO";
 const STORAGE_KEY = "devano_marketeiros_popup";
 
 export default function NewsletterPopup() {
@@ -50,14 +48,11 @@ export default function NewsletterPopup() {
     if (!email || status === "loading") return;
     setStatus("loading");
     try {
-      const res = await fetch(
-        `https://buttondown.com/api/emails/embed-subscribe/${BUTTONDOWN_USER}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ email }),
-        }
-      );
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
       if (res.ok) {
         setStatus("ok");
         try {

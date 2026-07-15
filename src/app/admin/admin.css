@@ -155,3 +155,57 @@ a.admin-chip:hover { border-color: var(--musgo); background: var(--gelo); }
 @media (max-width: 760px) {
   .admin-setores { grid-template-columns: 1fr; }
 }
+
+/* Voltar */
+.admin-voltar {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--musgo);
+  text-decoration: none;
+  margin-bottom: 28px;
+  letter-spacing: 0.02em;
+}
+.admin-voltar:hover { text-decoration: underline; }
+
+/* Tabela de inscritos */
+.admin-tabela {
+  margin-top: 40px;
+  border: 1px solid var(--linha);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+.admin-tabela-head {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--gelo-alt);
+  border-bottom: 1px solid var(--linha);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cinza);
+  font-weight: var(--peso-corpo-forte);
+}
+.admin-tabela-row {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--linha-suave);
+  font-size: 15px;
+  color: var(--tinta);
+}
+.admin-tabela-row:last-child { border-bottom: none; }
+.admin-tabela-data { color: var(--cinza); font-size: 14px; }
+.admin-vazio {
+  margin-top: 40px;
+  padding: 48px 32px;
+  border: 1px dashed var(--linha);
+  border-radius: 3px;
+  text-align: center;
+  color: var(--cinza);
+  font-size: 15px;
+  line-height: 1.6;
+}

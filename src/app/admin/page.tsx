@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "./actions";
 
@@ -41,7 +42,7 @@ export default async function AdminHome() {
             <p>Blog e newsletter Marketeiros.</p>
             <div className="admin-setor-links">
               <span className="admin-chip em-breve">Blog · em breve</span>
-              <span className="admin-chip em-breve">Newsletter · em breve</span>
+              <Link href="/admin/newsletter" className="admin-chip">Newsletter →</Link>
             </div>
           </div>
 
