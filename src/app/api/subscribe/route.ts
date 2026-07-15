@@ -2,32 +2,64 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
+  // 1) Ler o corpo de forma robusta
+  let email: unknown;
   try {
-    const { email } = await request.json();
-
-    // Validação simples de e-mail
-    if (!email || typeof email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
+    const body = await request.json();
+    email = body?.email;
+  } catch {
+    // Tenta ler como texto puro, caso o content-type venha diferente
+    try {
+      const texto = await request.text();
+      const params = new URLSearchParams(texto);
+      email = params.get("email") ?? undefined;
+    } catch {
+      return NextResponse.json(
+        { error: "Não foi possível ler o e-mail enviado." },
+        { status: 400 }
+      );
     }
+  }
 
+  // 2) Validar
+  if (
+    !email ||
+    typeof email !== "string" ||
+    !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)
+  ) {
+    return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
+  }
+
+  // 3) Checar se a chave secreta está presente (diagnóstico claro)
+  if (!process.env.SUPABASE_SECRET_KEY) {
+    return NextResponse.json(
+      { error: "Configuração ausente: SUPABASE_SECRET_KEY não encontrada." },
+      { status: 500 }
+    );
+  }
+
+  // 4) Inserir no banco
+  try {
     const supabase = createAdminClient();
-
-    // Insere o inscrito. Se já existir (e-mail duplicado), trata como sucesso.
     const { error } = await supabase
       .from("inscritos")
       .insert({ email: email.toLowerCase().trim() });
 
     if (error) {
-      // Código 23505 = violação de unicidade (e-mail já cadastrado). Não é erro para o usuário.
+      // E-mail já cadastrado — tratamos como sucesso.
       if (error.code === "23505") {
         return NextResponse.json({ ok: true, jaInscrito: true });
       }
-      console.error("Erro ao inserir inscrito:", error);
-      return NextResponse.json({ error: "Não foi possível concluir." }, { status: 500 });
+      // Retorna a mensagem REAL do Supabase para diagnóstico.
+      return NextResponse.json(
+        { error: `Banco: ${error.message}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Requisição inválida." }, { status: 400 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "erro desconhecido";
+    return NextResponse.json({ error: `Falha: ${msg}` }, { status: 500 });
   }
 }
