@@ -209,3 +209,100 @@ a.admin-chip:hover { border-color: var(--musgo); background: var(--gelo); }
   font-size: 15px;
   line-height: 1.6;
 }
+
+/* ===== EDITOR DA NEWSLETTER ===== */
+.editor-nl {
+  margin-top: 40px;
+  background: #fff;
+  border: 1px solid var(--linha);
+  border-radius: 3px;
+  padding: 32px;
+}
+.editor-campos { display: flex; flex-direction: column; gap: 24px; }
+.editor-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cinza);
+  font-weight: var(--peso-corpo-forte);
+}
+.editor-input, .editor-textarea, .editor-input-inline {
+  border: 1px solid var(--linha);
+  border-radius: 2px;
+  background: var(--gelo);
+  color: var(--tinta);
+  font-family: inherit;
+  font-weight: var(--peso-corpo);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.editor-input { padding: 13px 15px; font-size: 16px; }
+.editor-textarea {
+  padding: 16px;
+  font-size: 15px;
+  line-height: 1.7;
+  resize: vertical;
+  min-height: 320px;
+}
+.editor-input:focus, .editor-textarea:focus, .editor-input-inline:focus {
+  border-color: var(--musgo);
+}
+.editor-dica {
+  font-size: 12px;
+  color: var(--cinza-claro);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: var(--peso-corpo);
+}
+.editor-dica code {
+  background: var(--gelo-alt);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+.editor-acoes {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--linha-suave);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.editor-teste { display: flex; align-items: center; gap: 8px; }
+.editor-input-inline { padding: 11px 13px; font-size: 14px; width: 220px; }
+.editor-confirma {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--tinta);
+}
+.editor-status {
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--gelo-alt);
+  border-radius: 2px;
+  font-size: 14px;
+  color: var(--tinta);
+  line-height: 1.5;
+}
+.editor-nl .btn { cursor: pointer; }
+.editor-nl .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Seções e tabela de 3 colunas */
+.admin-secao { margin-top: 64px; }
+.admin-subtitulo {
+  font-size: 20px;
+  font-weight: var(--peso-titulo);
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
+}
+.admin-tabela-row.tres, .admin-tabela-head:has(+ .admin-tabela-row.tres) {
+  grid-template-columns: 1fr 100px 140px;
+}
+.admin-tabela-head.tres { grid-template-columns: 1fr 100px 140px; }
