@@ -35,6 +35,30 @@ export default function EditorPost({
   );
   const [status, setStatus] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [subindoCapa, setSubindoCapa] = useState(false);
+  const [erroCapa, setErroCapa] = useState<string | null>(null);
+
+  async function subirCapa(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    if (!arquivo) return;
+    setErroCapa(null);
+    setSubindoCapa(true);
+    try {
+      const form = new FormData();
+      form.append("arquivo", arquivo);
+      const res = await fetch("/api/upload-capa", { method: "POST", body: form });
+      const dados = await res.json();
+      if (res.ok) {
+        setCapa(dados.url);
+      } else {
+        setErroCapa(dados.error ?? "Não foi possível subir a imagem.");
+      }
+    } catch {
+      setErroCapa("Erro de conexão ao subir a imagem.");
+    } finally {
+      setSubindoCapa(false);
+    }
+  }
 
   async function salvar() {
     if (!titulo.trim() || !texto.trim()) {
@@ -136,15 +160,49 @@ export default function EditorPost({
 
         <label className="editor-label">
           Capa (opcional)
+          <div className="capa-orientacao">
+            Tamanho ideal: <strong>1200 × 630 px</strong> · JPG, PNG ou WEBP · até 2 MB
+          </div>
+
+          {capa && (
+            <div className="capa-previa">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={capa} alt="Prévia da capa" />
+              <button
+                type="button"
+                className="capa-remover"
+                onClick={() => setCapa("")}
+              >
+                Remover capa
+              </button>
+            </div>
+          )}
+
+          <div className="capa-upload">
+            <label className="capa-botao">
+              {subindoCapa ? "Enviando…" : capa ? "Trocar imagem" : "Escolher imagem do computador"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={subirCapa}
+                disabled={subindoCapa}
+                hidden
+              />
+            </label>
+          </div>
+
+          {erroCapa && <span className="capa-erro">{erroCapa}</span>}
+
           <input
             type="text"
             value={capa}
             onChange={(e) => setCapa(e.target.value)}
-            placeholder="/editorial/arcos.jpg"
+            placeholder="ou cole um caminho: /editorial/arcos.jpg"
             className="editor-input"
           />
           <span className="editor-dica">
-            Caminho de uma imagem que já está no site. Deixe vazio para não ter capa.
+            Suba uma imagem do seu computador (recomendado) ou cole o caminho de
+            uma imagem que já está no site. Deixe vazio para não ter capa.
           </span>
         </label>
 
