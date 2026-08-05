@@ -306,3 +306,30 @@ a.admin-chip:hover { border-color: var(--musgo); background: var(--gelo); }
   grid-template-columns: 1fr 100px 140px;
 }
 .admin-tabela-head.tres { grid-template-columns: 1fr 100px 140px; }
+
+/* ===== BLOG NO PAINEL ===== */
+.blog-acoes-topo { margin-top: 40px; }
+.editor-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 640px) { .editor-linha { grid-template-columns: 1fr; } }
+select.editor-input { cursor: pointer; }
+
+.admin-tabela-head.blog, .admin-tabela-row.blog {
+  grid-template-columns: 1fr 140px 130px 200px;
+}
+.blog-linha-acoes { display: flex; gap: 12px; justify-content: flex-end; }
+.blog-acao {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--musgo);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.blog-acao:hover { text-decoration: underline; }
+.blog-acao.perigo { color: #a3402f; }
+@media (max-width: 860px) {
+  .admin-tabela-head.blog, .admin-tabela-row.blog { grid-template-columns: 1fr; gap: 8px; }
+  .blog-linha-acoes { justify-content: flex-start; }
+}

@@ -41,7 +41,7 @@ export default async function AdminHome() {
             <h2>Marketing</h2>
             <p>Blog e newsletter Marketeiros.</p>
             <div className="admin-setor-links">
-              <span className="admin-chip em-breve">Blog · em breve</span>
+              <Link href="/admin/blog" className="admin-chip">Blog →</Link>
               <Link href="/admin/newsletter" className="admin-chip">Newsletter →</Link>
             </div>
           </div>

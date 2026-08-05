@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
 import { getAllPostsMeta } from "@/lib/posts";
 
-export const dynamic = "force-static";
+export const revalidate = 60;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://www.devanobranding.com";
-  const posts = getAllPostsMeta().map((p) => ({
+  const posts = (await getAllPostsMeta()).map((p) => ({
     url: `${base}/blog/${p.slug}`,
     lastModified: p.dataISO,
     changeFrequency: "monthly" as const,

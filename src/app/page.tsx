@@ -77,8 +77,8 @@ const googleReviewsUrl = "https://share.google/1u7FhEBZ7l681T6cw";
 // TODO: portfólio — preencher com as 6 capas de projeto.
 const projetos: { titulo: string; categoria: string; capa: string; link: string }[] = [];
 
-export default function Home() {
-  const posts = getAllPostsMeta().slice(0, 3);
+export default async function Home() {
+  const posts = (await getAllPostsMeta()).slice(0, 3);
 
   return (
     <>

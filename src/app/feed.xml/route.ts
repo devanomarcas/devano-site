@@ -1,6 +1,6 @@
 import { getAllPostsMeta, getPost } from "@/lib/posts";
 
-export const dynamic = "force-static";
+export const revalidate = 60;
 
 const SITE = "https://www.devanobranding.com";
 
@@ -14,11 +14,12 @@ function escapeXml(s: string): string {
 }
 
 export async function GET() {
-  const posts = getAllPostsMeta();
+  const posts = await getAllPostsMeta();
 
   const items = await Promise.all(
     posts.map(async (meta) => {
       const post = await getPost(meta.slug);
+      if (!post) return "";
       const url = `${SITE}/blog/${post.slug}`;
       const pubDate = new Date(post.dataISO + "T09:00:00-03:00").toUTCString();
       return `

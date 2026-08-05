@@ -11,8 +11,8 @@ export const metadata: Metadata = {
     "Reflexões sobre marca, estratégia e construção de negócios, por Lucas Mooneyhan.",
 };
 
-export default function BlogIndex() {
-  const posts = getAllPostsMeta();
+export default async function BlogIndex() {
+  const posts = await getAllPostsMeta();
 
   return (
     <>

@@ -4,10 +4,13 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { getSlugs, getPost, getPostMeta } from "@/lib/posts";
+import { getAllPostsMeta, getPost } from "@/lib/posts";
 
-export function generateStaticParams() {
-  return getSlugs().map((slug) => ({ slug }));
+export const revalidate = 60;
+
+export async function generateStaticParams() {
+  const posts = await getAllPostsMeta();
+  return posts.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({
@@ -15,21 +18,18 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  try {
-    const meta = getPostMeta(params.slug);
-    return {
-      title: meta.titulo,
-      description: meta.resumo,
-      openGraph: {
-        title: meta.titulo,
-        description: meta.resumo,
-        type: "article",
-        images: meta.capa ? [meta.capa] : undefined,
-      },
-    };
-  } catch {
-    return { title: "Texto não encontrado" };
-  }
+  const post = await getPost(params.slug);
+  if (!post) return { title: "Texto não encontrado" };
+  return {
+    title: post.titulo,
+    description: post.resumo,
+    openGraph: {
+      title: post.titulo,
+      description: post.resumo,
+      type: "article",
+      images: post.capa ? [post.capa] : undefined,
+    },
+  };
 }
 
 export default async function ArticlePage({
@@ -37,8 +37,9 @@ export default async function ArticlePage({
 }: {
   params: { slug: string };
 }) {
-  if (!getSlugs().includes(params.slug)) notFound();
   const post = await getPost(params.slug);
+  if (!post) notFound();
+
   const hasCapa = post.capa && !post.capa.includes("placeholder");
 
   return (
