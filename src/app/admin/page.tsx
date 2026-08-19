@@ -46,6 +46,14 @@ export default async function AdminHome() {
             </div>
           </div>
 
+          <div className="admin-setor ativo">
+            <h2>Projetos</h2>
+            <p>Gestão de projetos, fases e prazos.</p>
+            <div className="admin-setor-links">
+              <Link href="/admin/projetos" className="admin-chip">Ver projetos →</Link>
+            </div>
+          </div>
+
           <div className="admin-setor">
             <h2>Comercial</h2>
             <p>Gerador de propostas.</p>
