@@ -88,7 +88,7 @@ export default async function ProjetosPage() {
           {papel === "gestor" && " Como gestor, você também acessa o financeiro de cada projeto."}
         </p>
 
-        <KanbanProjetos projetos={projetos} pessoas={pessoas} />
+        <KanbanProjetos projetos={projetos} pessoas={pessoas} papel={papel} />
       </main>
     </div>
   );

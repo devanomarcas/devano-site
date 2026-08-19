@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Financeiro from "@/components/admin/Financeiro";
 
 export type FaseDB = {
   id: string;
@@ -49,7 +50,7 @@ function dCurto(iso: string | null): string {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
-export default function KanbanProjetos({ projetos, pessoas }: { projetos: ProjetoDB[]; pessoas: Pessoa[] }) {
+export default function KanbanProjetos({ projetos, pessoas, papel }: { projetos: ProjetoDB[]; pessoas: Pessoa[]; papel: "gestor" | "equipe" | null }) {
   const router = useRouter();
   const [filtro, setFiltro] = useState<string>("todos");
   const [modalCad, setModalCad] = useState(false);
@@ -120,7 +121,7 @@ export default function KanbanProjetos({ projetos, pessoas }: { projetos: Projet
       )}
 
       {modalCad && <ModalCadastro pessoas={pessoas} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
-      {detalhe && <ModalDetalhe p={detalhe} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
+      {detalhe && <ModalDetalhe p={detalhe} papel={papel} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
     </div>
   );
 }
@@ -272,10 +273,12 @@ function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFe
   );
 }
 
-function ModalDetalhe({ p, onFechar, onSalvo }: { p: ProjetoDB; onFechar: () => void; onSalvo: () => void }) {
+function ModalDetalhe({ p, papel, onFechar, onSalvo }: { p: ProjetoDB; papel: "gestor" | "equipe" | null; onFechar: () => void; onSalvo: () => void }) {
+  const [aba, setAba] = useState<"gestao" | "financeiro">("gestao");
   const [obs, setObs] = useState(p.observacao || "");
   const [salvando, setSalvando] = useState(false);
   const faseAtualNome = p.fases.find((f) => f.ordem === p.fase_atual)?.nome || "—";
+  const ehGestor = papel === "gestor";
 
   async function salvarObs() {
     setSalvando(true);
@@ -296,29 +299,47 @@ function ModalDetalhe({ p, onFechar, onSalvo }: { p: ProjetoDB; onFechar: () => 
           <button className="kb-modal-x" onClick={onFechar}>×</button>
         </div>
         <div className="kb-modal-body">
-          <div className="kb-det-info">
-            <strong>{TIPO_LABEL[p.tipo]}</strong> · Cliente: {p.cliente || "—"}
+          <div className="kb-abas">
+            <button className={`kb-aba ${aba === "gestao" ? "on" : ""}`} onClick={() => setAba("gestao")}>Gestão</button>
+            {ehGestor && (
+              <button className={`kb-aba ${aba === "financeiro" ? "on" : ""}`} onClick={() => setAba("financeiro")}>Financeiro</button>
+            )}
           </div>
-          <div className="kb-det-fases-titulo">Fases e cronograma</div>
-          {p.fases.map((f) => {
-            const st = f.ordem < p.fase_atual ? "done" : f.ordem === p.fase_atual ? "atual" : "";
-            return (
-              <div className="kb-fase-item" key={f.id}>
-                <span className={`kb-fase-check ${st}`}>{f.ordem < p.fase_atual ? "✓" : f.ordem + 1}</span>
-                <span className={`kb-fase-texto ${f.ordem < p.fase_atual ? "done" : ""}`}>{f.nome}</span>
-                <span className="kb-fase-datas">{dCurto(f.inicio)} → <span className="fim">{dCurto(f.fim)}</span></span>
+
+          {aba === "gestao" ? (
+            <>
+              <div className="kb-det-info">
+                <strong>{TIPO_LABEL[p.tipo]}</strong> · Cliente: {p.cliente || "—"}
               </div>
-            );
-          })}
-          <div className="kb-obs-bloco">
-            <div className="kb-det-fases-titulo">Observação da fase atual</div>
-            <div className="kb-obs-atual">Fase atual: <strong>{faseAtualNome}</strong></div>
-            <textarea className="kb-textarea" value={obs} onChange={(e) => setObs(e.target.value)}
-              placeholder="Ex.: identidade apresentada, aguardando aprovação do cliente..." />
-            <button className="kb-btn-primary" onClick={salvarObs} disabled={salvando} style={{ marginTop: 10 }}>
-              {salvando ? "Salvando…" : "Salvar observação"}
-            </button>
-          </div>
+              {p.participantes.length > 0 && (
+                <div className="kb-det-parts">
+                  {p.participantes.map((n, i) => <span className="kb-part-tag" key={i}>{n}</span>)}
+                </div>
+              )}
+              <div className="kb-det-fases-titulo">Fases e cronograma</div>
+              {p.fases.map((f) => {
+                const st = f.ordem < p.fase_atual ? "done" : f.ordem === p.fase_atual ? "atual" : "";
+                return (
+                  <div className="kb-fase-item" key={f.id}>
+                    <span className={`kb-fase-check ${st}`}>{f.ordem < p.fase_atual ? "✓" : f.ordem + 1}</span>
+                    <span className={`kb-fase-texto ${f.ordem < p.fase_atual ? "done" : ""}`}>{f.nome}</span>
+                    <span className="kb-fase-datas">{dCurto(f.inicio)} → <span className="fim">{dCurto(f.fim)}</span></span>
+                  </div>
+                );
+              })}
+              <div className="kb-obs-bloco">
+                <div className="kb-det-fases-titulo">Observação da fase atual</div>
+                <div className="kb-obs-atual">Fase atual: <strong>{faseAtualNome}</strong></div>
+                <textarea className="kb-textarea" value={obs} onChange={(e) => setObs(e.target.value)}
+                  placeholder="Ex.: identidade apresentada, aguardando aprovação do cliente..." />
+                <button className="kb-btn-primary" onClick={salvarObs} disabled={salvando} style={{ marginTop: 10 }}>
+                  {salvando ? "Salvando…" : "Salvar observação"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <Financeiro projetoId={p.id} onSalvo={onSalvo} />
+          )}
         </div>
       </div>
     </div>
