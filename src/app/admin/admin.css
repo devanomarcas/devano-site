@@ -527,3 +527,46 @@ select.editor-input { cursor: pointer; }
 .kb-fin-resumo-linha{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:rgba(255,237,210,.85);}
 .kb-fin-resumo-linha span:last-child{font-weight:600;color:#fff;}
 .kb-fin-resumo-linha.total{border-top:1px solid rgba(255,255,255,.2);margin-top:6px;padding-top:12px;font-size:18px;font-weight:600;color:#fff;}
+
+/* ===== EDITAR / APAGAR (Bloco 5) ===== */
+.kb-det-acoes{display:flex;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid #EEEBE3;}
+.kb-link-edit{border:none;background:none;font-family:inherit;font-size:13px;color:#606D50;cursor:pointer;font-weight:500;}
+.kb-link-edit:hover{text-decoration:underline;}
+.kb-link-apagar{border:none;background:none;font-family:inherit;font-size:13px;color:#A3654A;cursor:pointer;font-weight:500;}
+.kb-link-apagar:hover{text-decoration:underline;}
+
+/* ===== FINANCEIRO GERAL / CONSOLIDADO (Bloco 6) ===== */
+.fg-atalho{margin:20px 0 4px;}
+.fg-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:24px 0;}
+.fg-card{border-radius:10px;padding:22px 24px;}
+.fg-card span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:10px;}
+.fg-card strong{display:block;font-size:28px;font-weight:700;}
+.fg-card.faturado{background:#F6F3EC;border:1px solid #E3E0D8;}
+.fg-card.faturado span{color:#6E726B;} .fg-card.faturado strong{color:#444D42;}
+.fg-card.recebido{background:#E4E7DD;border:1px solid #606D50;}
+.fg-card.recebido span{color:#606D50;} .fg-card.recebido strong{color:#444D42;}
+.fg-card.areceber{background:#FFEDD2;border:1px solid #C89B54;}
+.fg-card.areceber span{color:#A3654A;} .fg-card.areceber strong{color:#444D42;}
+.fg-secao{margin:28px 0;}
+.fg-titulo{font-size:16px;font-weight:600;color:#444D42;margin-bottom:16px;}
+.fg-fluxo{display:flex;flex-direction:column;gap:10px;}
+.fg-fluxo-linha{display:flex;align-items:center;gap:14px;}
+.fg-fluxo-mes{width:64px;font-size:12px;color:#6E726B;font-weight:500;text-transform:capitalize;}
+.fg-fluxo-barra-tras{flex:1;height:26px;background:#F1F1EF;border-radius:4px;overflow:hidden;}
+.fg-fluxo-barra{height:100%;background:#606D50;border-radius:4px;min-width:2px;}
+.fg-fluxo-valor{width:110px;text-align:right;font-size:13px;font-weight:600;color:#444D42;}
+.fg-duas{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.fg-resumo{background:#444D42;color:#fff;border-radius:10px;padding:20px 22px;}
+.fg-resumo-linha{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;color:rgba(255,237,210,.85);}
+.fg-resumo-linha span:last-child{font-weight:600;color:#fff;}
+.fg-resumo-linha.total{border-top:1px solid rgba(255,255,255,.2);margin-top:6px;padding-top:12px;font-size:17px;font-weight:600;color:#fff;}
+.fg-tipos{background:#F6F3EC;border:1px solid #E3E0D8;border-radius:10px;padding:8px 18px;}
+.fg-tipo-linha{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #EEEBE3;}
+.fg-tipo-linha:last-child{border-bottom:none;}
+.fg-tipo-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.fg-tipo-dot.branding{background:#444D42;}
+.fg-tipo-dot.visual{background:#C89B54;}
+.fg-tipo-dot.excepcional{background:#A3654A;}
+.fg-tipo-nome{flex:1;font-size:13px;color:#1A1C19;}
+.fg-tipo-valor{font-size:13px;font-weight:600;color:#444D42;}
+@media (max-width:720px){.fg-cards{grid-template-columns:1fr;}.fg-duas{grid-template-columns:1fr;}}

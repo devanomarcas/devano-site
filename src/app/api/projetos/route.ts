@@ -84,6 +84,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ---- Editar projeto (nome, cliente, fases, participantes) ----
+    if (acao === "editar") {
+      const { id, nome, cliente, fases, participantes } = corpo;
+      if (!id || !nome) {
+        return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
+      }
+      await admin
+        .from("projetos")
+        .update({ nome, cliente: cliente || null })
+        .eq("id", id);
+
+      // Atualiza as datas das fases existentes (por id)
+      if (Array.isArray(fases)) {
+        for (const f of fases) {
+          if (f.id) {
+            await admin
+              .from("fases")
+              .update({ inicio: f.inicio || null, fim: f.fim || null })
+              .eq("id", f.id);
+          }
+        }
+      }
+
+      // Regrava participantes
+      if (Array.isArray(participantes)) {
+        await admin.from("participantes").delete().eq("projeto_id", id);
+        if (participantes.length > 0) {
+          await admin.from("participantes").insert(
+            participantes.map((pid: string) => ({ projeto_id: id, perfil_id: pid }))
+          );
+        }
+      }
+
+      revalidatePath("/admin/projetos");
+      return NextResponse.json({ ok: true });
+    }
+
     // ---- Apagar projeto ----
     if (acao === "apagar") {
       const { id } = corpo;

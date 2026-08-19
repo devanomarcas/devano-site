@@ -22,6 +22,7 @@ export type ProjetoDB = {
   observacao: string | null;
   fases: FaseDB[];
   participantes: string[];
+  participantesIds: string[];
 };
 
 export type Pessoa = { id: string; nome: string };
@@ -121,7 +122,7 @@ export default function KanbanProjetos({ projetos, pessoas, papel }: { projetos:
       )}
 
       {modalCad && <ModalCadastro pessoas={pessoas} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
-      {detalhe && <ModalDetalhe p={detalhe} papel={papel} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
+      {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
     </div>
   );
 }
@@ -273,12 +274,19 @@ function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFe
   );
 }
 
-function ModalDetalhe({ p, papel, onFechar, onSalvo }: { p: ProjetoDB; papel: "gestor" | "equipe" | null; onFechar: () => void; onSalvo: () => void }) {
+function ModalDetalhe({ p, papel, pessoas, onFechar, onSalvo }: { p: ProjetoDB; papel: "gestor" | "equipe" | null; pessoas: Pessoa[]; onFechar: () => void; onSalvo: () => void }) {
   const [aba, setAba] = useState<"gestao" | "financeiro">("gestao");
   const [obs, setObs] = useState(p.observacao || "");
   const [salvando, setSalvando] = useState(false);
+  const [editando, setEditando] = useState(false);
   const faseAtualNome = p.fases.find((f) => f.ordem === p.fase_atual)?.nome || "—";
   const ehGestor = papel === "gestor";
+
+  // estados de ediÃ§Ã£o
+  const [edNome, setEdNome] = useState(p.nome);
+  const [edCliente, setEdCliente] = useState(p.cliente || "");
+  const [edFases, setEdFases] = useState(p.fases.map((f) => ({ id: f.id, nome: f.nome, inicio: f.inicio || "", fim: f.fim || "" })));
+  const [edParts, setEdParts] = useState<string[]>(p.participantesIds);
 
   async function salvarObs() {
     setSalvando(true);
@@ -291,22 +299,87 @@ function ModalDetalhe({ p, papel, onFechar, onSalvo }: { p: ProjetoDB; papel: "g
     onSalvo();
   }
 
+  async function salvarEdicao() {
+    if (!edNome.trim()) return;
+    setSalvando(true);
+    await fetch("/api/projetos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "editar", id: p.id, nome: edNome, cliente: edCliente, fases: edFases, participantes: edParts }),
+    });
+    setSalvando(false);
+    onSalvo();
+  }
+
+  async function apagar() {
+    if (!confirm("Apagar este projeto? Esta aÃ§Ã£o nÃ£o pode ser desfeita.")) return;
+    setSalvando(true);
+    await fetch("/api/projetos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "apagar", id: p.id }),
+    });
+    setSalvando(false);
+    onSalvo();
+  }
+
   return (
     <div className="kb-overlay" onClick={onFechar}>
       <div className="kb-modal" onClick={(e) => e.stopPropagation()}>
         <div className="kb-modal-head">
-          <h2>{p.nome}</h2>
+          <h2>{editando ? "Editar projeto" : p.nome}</h2>
           <button className="kb-modal-x" onClick={onFechar}>×</button>
         </div>
         <div className="kb-modal-body">
-          <div className="kb-abas">
-            <button className={`kb-aba ${aba === "gestao" ? "on" : ""}`} onClick={() => setAba("gestao")}>Gestão</button>
-            {ehGestor && (
-              <button className={`kb-aba ${aba === "financeiro" ? "on" : ""}`} onClick={() => setAba("financeiro")}>Financeiro</button>
-            )}
-          </div>
+          {!editando && (
+            <div className="kb-abas">
+              <button className={`kb-aba ${aba === "gestao" ? "on" : ""}`} onClick={() => setAba("gestao")}>GestÃ£o</button>
+              {ehGestor && (
+                <button className={`kb-aba ${aba === "financeiro" ? "on" : ""}`} onClick={() => setAba("financeiro")}>Financeiro</button>
+              )}
+            </div>
+          )}
 
-          {aba === "gestao" ? (
+          {editando ? (
+            <>
+              <label className="kb-label">Nome do projeto
+                <input className="kb-input" value={edNome} onChange={(e) => setEdNome(e.target.value)} />
+              </label>
+              <label className="kb-label">Cliente
+                <input className="kb-input" value={edCliente} onChange={(e) => setEdCliente(e.target.value)} />
+              </label>
+              <div className="kb-label">Participantes</div>
+              <div className="kb-parts-sel">
+                {pessoas.map((pe) => {
+                  const on = edParts.includes(pe.id);
+                  return (
+                    <button type="button" key={pe.id} className={`kb-part-chip ${on ? "on" : ""}`}
+                      onClick={() => setEdParts((prev) => prev.includes(pe.id) ? prev.filter((x) => x !== pe.id) : [...prev, pe.id])}>
+                      {on ? "✓ " : ""}{pe.nome}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="kb-label">Datas das fases</div>
+              <div className="kb-fases-cad">
+                <div className="kb-datas-labels"><span>InÃ­cio</span><span>Fim/apres.</span></div>
+                {edFases.map((f, i) => (
+                  <div className="kb-fase-cad ativa" key={f.id}>
+                    <span></span>
+                    <span className="kb-fase-cad-nome">{f.nome}</span>
+                    <input type="date" value={f.inicio} onChange={(e) => { const n = [...edFases]; n[i] = { ...n[i], inicio: e.target.value }; setEdFases(n); }} />
+                    <input type="date" value={f.fim} onChange={(e) => { const n = [...edFases]; n[i] = { ...n[i], fim: e.target.value }; setEdFases(n); }} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "space-between" }}>
+                <button className="kb-btn-ghost" onClick={() => setEditando(false)}>Voltar</button>
+                <button className="kb-btn-primary" onClick={salvarEdicao} disabled={salvando}>
+                  {salvando ? "Salvando…" : "Salvar alteraÃ§Ãµes"}
+                </button>
+              </div>
+            </>
+          ) : aba === "gestao" ? (
             <>
               <div className="kb-det-info">
                 <strong>{TIPO_LABEL[p.tipo]}</strong> · Cliente: {p.cliente || "—"}
@@ -328,13 +401,17 @@ function ModalDetalhe({ p, papel, onFechar, onSalvo }: { p: ProjetoDB; papel: "g
                 );
               })}
               <div className="kb-obs-bloco">
-                <div className="kb-det-fases-titulo">Observação da fase atual</div>
+                <div className="kb-det-fases-titulo">ObservaÃ§Ã£o da fase atual</div>
                 <div className="kb-obs-atual">Fase atual: <strong>{faseAtualNome}</strong></div>
                 <textarea className="kb-textarea" value={obs} onChange={(e) => setObs(e.target.value)}
-                  placeholder="Ex.: identidade apresentada, aguardando aprovação do cliente..." />
+                  placeholder="Ex.: identidade apresentada, aguardando aprovaÃ§Ã£o do cliente..." />
                 <button className="kb-btn-primary" onClick={salvarObs} disabled={salvando} style={{ marginTop: 10 }}>
-                  {salvando ? "Salvando…" : "Salvar observação"}
+                  {salvando ? "Salvando…" : "Salvar observaÃ§Ã£o"}
                 </button>
+              </div>
+              <div className="kb-det-acoes">
+                <button className="kb-link-edit" onClick={() => setEditando(true)}>Editar projeto</button>
+                {ehGestor && <button className="kb-link-apagar" onClick={apagar}>Apagar projeto</button>}
               </div>
             </>
           ) : (

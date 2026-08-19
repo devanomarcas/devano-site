@@ -59,6 +59,9 @@ export default async function ProjetosPage() {
       .filter((pt) => pt.projeto_id === p.id)
       .map((pt) => pessoas.find((pe) => pe.id === pt.perfil_id)?.nome || "")
       .filter(Boolean),
+    participantesIds: parts
+      .filter((pt) => pt.projeto_id === p.id)
+      .map((pt) => pt.perfil_id),
   }));
 
   return (
@@ -87,6 +90,12 @@ export default async function ProjetosPage() {
           Acompanhe todos os projetos e suas fases.
           {papel === "gestor" && " Como gestor, você também acessa o financeiro de cada projeto."}
         </p>
+
+        {papel === "gestor" && (
+          <div className="fg-atalho">
+            <Link href="/admin/projetos/financeiro" className="admin-chip">Ver financeiro consolidado →</Link>
+          </div>
+        )}
 
         <KanbanProjetos projetos={projetos} pessoas={pessoas} papel={papel} />
       </main>
