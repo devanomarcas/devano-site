@@ -34,6 +34,19 @@ export default async function ProjetosPage() {
 
   const fases = (fasesRaw ?? []) as FaseDB[];
 
+  // lista de pessoas (para seleção no cadastro)
+  const { data: perfisRaw } = await admin
+    .from("perfis")
+    .select("id, nome")
+    .order("nome", { ascending: true });
+  const pessoas = (perfisRaw ?? []).map((p) => ({ id: p.id, nome: p.nome ?? "—" }));
+
+  // participantes por projeto
+  const { data: partsRaw } = await admin
+    .from("participantes")
+    .select("projeto_id, perfil_id");
+  const parts = partsRaw ?? [];
+
   const projetos: ProjetoDB[] = (projetosRaw ?? []).map((p) => ({
     id: p.id,
     nome: p.nome,
@@ -42,6 +55,10 @@ export default async function ProjetosPage() {
     fase_atual: p.fase_atual ?? 0,
     observacao: p.observacao,
     fases: fases.filter((f) => f.projeto_id === p.id),
+    participantes: parts
+      .filter((pt) => pt.projeto_id === p.id)
+      .map((pt) => pessoas.find((pe) => pe.id === pt.perfil_id)?.nome || "")
+      .filter(Boolean),
   }));
 
   return (
@@ -71,7 +88,7 @@ export default async function ProjetosPage() {
           {papel === "gestor" && " Como gestor, você também acessa o financeiro de cada projeto."}
         </p>
 
-        <KanbanProjetos projetos={projetos} />
+        <KanbanProjetos projetos={projetos} pessoas={pessoas} />
       </main>
     </div>
   );

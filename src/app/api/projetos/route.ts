@@ -47,6 +47,15 @@ export async function POST(request: Request) {
       const { error: e2 } = await admin.from("fases").insert(fasesInsert);
       if (e2) throw e2;
 
+      // participantes (informativo) — array de perfil_id
+      if (Array.isArray(corpo.participantes) && corpo.participantes.length > 0) {
+        const parts = corpo.participantes.map((pid: string) => ({
+          projeto_id: proj.id,
+          perfil_id: pid,
+        }));
+        await admin.from("participantes").insert(parts);
+      }
+
       revalidatePath("/admin/projetos");
       return NextResponse.json({ ok: true, id: proj.id });
     }

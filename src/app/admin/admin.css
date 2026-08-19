@@ -489,3 +489,11 @@ select.editor-input { cursor: pointer; }
 .kb-obs-atual strong{color:#444D42;}
 .kb-textarea{width:100%;padding:11px 13px;border:1px solid #E3E0D8;border-radius:4px;background:#fff;font-family:inherit;font-size:14px;color:#1A1C19;min-height:70px;resize:vertical;line-height:1.5;outline:none;}
 .kb-textarea:focus{border-color:#606D50;}
+
+/* ===== PARTICIPANTES ===== */
+.kb-parts-sel{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.kb-part-chip{font-family:inherit;font-size:12.5px;border:1px solid #E3E0D8;background:#fff;color:#6E726B;border-radius:20px;padding:7px 14px;cursor:pointer;transition:all .15s;}
+.kb-part-chip:hover{border-color:#606D50;}
+.kb-part-chip.on{background:#606D50;color:#fff;border-color:#606D50;}
+.kb-card-parts{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+.kb-part-tag{font-size:10px;background:#EDE9DF;color:#606D50;border-radius:10px;padding:2px 8px;font-weight:500;}
