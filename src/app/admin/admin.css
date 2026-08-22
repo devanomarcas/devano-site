@@ -591,3 +591,47 @@ select.editor-input { cursor: pointer; }
 .kb-obs-apagar:hover{color:#A3654A;text-decoration:underline;}
 .kb-obs-texto{font-size:13px;color:#1A1C19;line-height:1.5;}
 .kb-obs-autor{font-size:10px;color:#9A9A92;margin-top:6px;}
+
+/* ——————————————————————————————————————————————
+   Kanban · filtros combinados e rolagem lateral
+   —————————————————————————————————————————————— */
+
+/* linha de resumo dos filtros ativos */
+.kb-resumo-filtros{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-6px 0 20px;}
+.kb-resumo-txt{font-size:12px;color:#9A9A92;line-height:1.5;}
+.kb-resumo-txt strong{color:#444D42;font-weight:600;}
+
+/* moldura do quadro */
+.kb-board-wrap{position:relative;}
+
+/* faixa superior: dica e setas */
+.kb-rolagem{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
+.kb-rolagem-dica{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:#606D50;}
+.kb-rolagem-setas{display:flex;gap:6px;}
+.kb-rolagem-setas button{font-family:inherit;font-size:13px;line-height:1;width:30px;height:30px;border:1px solid #E3E0D8;background:#fff;color:#444D42;border-radius:50%;cursor:pointer;transition:all .15s;}
+.kb-rolagem-setas button:hover:not(:disabled){background:#444D42;color:#fff;border-color:#444D42;}
+.kb-rolagem-setas button:disabled{opacity:.3;cursor:not-allowed;}
+
+/* barra de rolagem própria, sempre visível, acima do quadro */
+.kb-trilho{position:relative;height:12px;border-radius:6px;background:#E4E1D8;
+  margin-bottom:12px;overflow:hidden;cursor:pointer;touch-action:none;}
+.kb-trilho-barra{position:absolute;top:0;bottom:0;background:#606D50;border-radius:6px;
+  cursor:grab;transition:background .15s;touch-action:none;}
+.kb-trilho-barra:hover{background:#444D42;}
+.kb-trilho-barra:active{background:#444D42;cursor:grabbing;}
+
+/* degradê nas bordas: mostra que há conteúdo cortado */
+.kb-board-area{position:relative;}
+.kb-board-area::before,.kb-board-area::after{content:"";position:absolute;top:0;bottom:16px;width:54px;pointer-events:none;opacity:0;transition:opacity .25s;z-index:2;}
+.kb-board-area::before{left:0;background:linear-gradient(to right,#F1F1EF 12%,rgba(241,241,239,0));}
+.kb-board-area::after{right:0;background:linear-gradient(to left,#F1F1EF 12%,rgba(241,241,239,0));}
+.kb-board-area.corte-esq::before{opacity:1;}
+.kb-board-area.corte-dir::after{opacity:1;}
+
+/* a barra de baixo do próprio quadro também fica visível */
+.kb-board{scrollbar-width:thin;scrollbar-color:#C4C1B8 transparent;}
+
+@media (max-width:640px){
+  .kb-rolagem-dica{font-size:9.5px;letter-spacing:.06em;}
+  .kb-coluna{flex:0 0 82vw;}
+}

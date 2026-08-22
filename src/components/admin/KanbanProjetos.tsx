@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Financeiro from "@/components/admin/Financeiro";
 
@@ -53,6 +53,9 @@ const FASES_PADRAO: Record<string, string[]> = {
   excepcional: ["Definição do escopo", "Em execução", "Revisão", "Entrega"],
 };
 
+// largura de uma coluna + o espaço entre elas — usado pelas setas de rolagem
+const PASSO_COLUNA = 264;
+
 function dCurto(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso + "T00:00:00");
@@ -72,22 +75,94 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
   const [modalCad, setModalCad] = useState(false);
   const [detalhe, setDetalhe] = useState<ProjetoDB | null>(null);
 
+  // rolagem lateral do quadro
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const trilhoRef = useRef<HTMLDivElement | null>(null);
+  const [barra, setBarra] = useState({ larg: 1, pos: 0 });
+  const [podeEsq, setPodeEsq] = useState(false);
+  const [podeDir, setPodeDir] = useState(false);
+
   const tipos: [string, string][] = [
     ["todos", "Todos"], ["branding", "Branding"],
     ["visual", "Comunicação visual"], ["excepcional", "Excepcionais"],
   ];
 
+  // os dois filtros valem ao mesmo tempo: tipo E pessoa
   const visiveis = projetos.filter((p) => {
-    if (filtroPessoa) return p.participantes.includes(filtroPessoa);
-    return filtro === "todos" || p.tipo === filtro;
+    const okTipo = filtro === "todos" || p.tipo === filtro;
+    const okPessoa = !filtroPessoa || p.participantes.includes(filtroPessoa);
+    return okTipo && okPessoa;
   });
 
+  const temFiltro = filtro !== "todos" || filtroPessoa !== "";
+
+  // com um tipo escolhido, as colunas ganham o nome real das fases —
+  // mesmo que haja também um filtro de pessoa aplicado.
   let colunas: string[];
-  if (filtroPessoa || filtro === "todos") {
+  if (filtro === "todos") {
     const maxF = Math.max(7, ...visiveis.map((p) => p.fases.length || 0));
     colunas = Array.from({ length: maxF }, (_, i) => `Etapa ${i + 1}`);
   } else {
     colunas = FASES_PADRAO[filtro];
+  }
+
+  const medir = useCallback(() => {
+    const el = boardRef.current;
+    if (!el) { setPodeEsq(false); setPodeDir(false); return; }
+    const total = el.scrollWidth || 1;
+    setBarra({ larg: Math.min(1, el.clientWidth / total), pos: el.scrollLeft / total });
+    setPodeEsq(el.scrollLeft > 4);
+    setPodeDir(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    medir();
+    const el = boardRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => medir());
+    ro.observe(el);
+    window.addEventListener("resize", medir);
+    return () => { ro.disconnect(); window.removeEventListener("resize", medir); };
+  }, [medir, colunas.length, visiveis.length]);
+
+  // arrastar a barra de cima move o quadro junto
+  function arrastarBarra(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    const trilho = trilhoRef.current;
+    const board = boardRef.current;
+    if (!trilho || !board) return;
+    const alvo = e.currentTarget;
+    const xInicial = e.clientX;
+    const scrollInicial = board.scrollLeft;
+    const razao = board.scrollWidth / (trilho.clientWidth || 1);
+    const aoMover = (ev: PointerEvent) => {
+      board.scrollLeft = scrollInicial + (ev.clientX - xInicial) * razao;
+    };
+    const aoSoltar = (ev: PointerEvent) => {
+      alvo.removeEventListener("pointermove", aoMover);
+      alvo.removeEventListener("pointerup", aoSoltar);
+      alvo.removeEventListener("pointercancel", aoSoltar);
+      try { alvo.releasePointerCapture(ev.pointerId); } catch { /* ignora */ }
+    };
+    alvo.setPointerCapture(e.pointerId);
+    alvo.addEventListener("pointermove", aoMover);
+    alvo.addEventListener("pointerup", aoSoltar);
+    alvo.addEventListener("pointercancel", aoSoltar);
+  }
+
+  // clicar em um ponto da barra salta o quadro para lá
+  function saltarNoTrilho(e: React.PointerEvent<HTMLDivElement>) {
+    const trilho = trilhoRef.current;
+    const board = boardRef.current;
+    if (!trilho || !board) return;
+    const r = trilho.getBoundingClientRect();
+    const fracao = (e.clientX - r.left) / (r.width || 1);
+    board.scrollTo({ left: fracao * board.scrollWidth - board.clientWidth / 2, behavior: "smooth" });
+  }
+
+  function rolarColuna(dir: number) {
+    boardRef.current?.scrollBy({ left: dir * PASSO_COLUNA, behavior: "smooth" });
   }
 
   async function mover(p: ProjetoDB, dir: number) {
@@ -101,13 +176,15 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
     router.refresh();
   }
 
+  const rolavel = podeEsq || podeDir;
+
   return (
     <div className="kb">
       <div className="kb-topo">
         <div className="kb-filtros">
           {tipos.map(([v, l]) => (
-            <button key={v} className={`kb-chip ${filtro === v && !filtroPessoa ? "on" : ""}`}
-              onClick={() => { setFiltro(v); setFiltroPessoa(""); }}>
+            <button key={v} className={`kb-chip ${filtro === v ? "on" : ""}`}
+              onClick={() => setFiltro(v)}>
               {l}
             </button>
           ))}
@@ -119,40 +196,79 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
         <span className="kb-filtros-label">Por pessoa:</span>
         {pessoas.map((pe) => (
           <button key={pe.id} className={`kb-chip pessoa ${filtroPessoa === pe.nome ? "on" : ""}`}
-            onClick={() => {
-              if (filtroPessoa === pe.nome) { setFiltroPessoa(""); }
-              else { setFiltroPessoa(pe.nome); setFiltro("todos"); }
-            }}>
+            onClick={() => setFiltroPessoa(filtroPessoa === pe.nome ? "" : pe.nome)}>
             {pe.nome}
           </button>
         ))}
-        {filtroPessoa && (
-          <button className="kb-chip limpar" onClick={() => setFiltroPessoa("")}>× limpar</button>
+      </div>
+
+      <div className="kb-resumo-filtros">
+        <span className="kb-resumo-txt">
+          {temFiltro ? (
+            <>
+              Mostrando <strong>{visiveis.length}</strong> de {projetos.length} projetos ·{" "}
+              {filtro === "todos" ? "todos os tipos" : TIPO_LABEL[filtro]}
+              {filtroPessoa ? ` · ${filtroPessoa}` : ""}
+            </>
+          ) : (
+            <>Mostrando todos os <strong>{projetos.length}</strong> projetos.</>
+          )}
+        </span>
+        {temFiltro && (
+          <button className="kb-chip limpar" onClick={() => { setFiltro("todos"); setFiltroPessoa(""); }}>
+            × limpar filtros
+          </button>
         )}
       </div>
 
       {visiveis.length === 0 ? (
-        <p className="kb-vazio-geral">Nenhum projeto ainda. Clique em “+ Novo projeto” para começar.</p>
+        <p className="kb-vazio-geral">
+          {temFiltro
+            ? "Nenhum projeto com essa combinação de filtros. Troque o tipo ou a pessoa, ou clique em “limpar filtros”."
+            : "Nenhum projeto ainda. Clique em “+ Novo projeto” para começar."}
+        </p>
       ) : (
-        <div className="kb-board">
-          {colunas.map((nomeCol, idx) => {
-            const naColuna = visiveis.filter((p) => p.fase_atual === idx);
-            return (
-              <div className="kb-coluna" key={idx}>
-                <div className="kb-coluna-head">
-                  <span className="kb-coluna-nome">{nomeCol}</span>
-                  <span className="kb-coluna-num">{naColuna.length}</span>
+        <div className="kb-board-wrap">
+          {rolavel && (
+            <>
+              <div className="kb-rolagem">
+                <span className="kb-rolagem-dica">↔ Role para o lado para ver todas as etapas</span>
+                <div className="kb-rolagem-setas">
+                  <button type="button" onClick={() => rolarColuna(-1)} disabled={!podeEsq} aria-label="Etapas anteriores">←</button>
+                  <button type="button" onClick={() => rolarColuna(1)} disabled={!podeDir} aria-label="Próximas etapas">→</button>
                 </div>
-                {naColuna.length ? (
-                  naColuna.map((p) => (
-                    <Cartao key={p.id} p={p} onAbrir={() => setDetalhe(p)} onMover={mover} />
-                  ))
-                ) : (
-                  <div className="kb-vazia">—</div>
-                )}
               </div>
-            );
-          })}
+              <div className="kb-trilho" ref={trilhoRef} onPointerDown={saltarNoTrilho}
+                role="scrollbar" aria-label="Rolagem lateral do quadro" aria-orientation="horizontal">
+                <div className="kb-trilho-barra" onPointerDown={arrastarBarra}
+                  style={{ width: `${Math.max(barra.larg * 100, 8)}%`, left: `${barra.pos * 100}%` }} />
+              </div>
+            </>
+          )}
+
+          <div className={`kb-board-area${podeEsq ? " corte-esq" : ""}${podeDir ? " corte-dir" : ""}`}>
+            <div className="kb-board" ref={boardRef}
+              onScroll={medir}>
+              {colunas.map((nomeCol, idx) => {
+                const naColuna = visiveis.filter((p) => p.fase_atual === idx);
+                return (
+                  <div className="kb-coluna" key={idx}>
+                    <div className="kb-coluna-head">
+                      <span className="kb-coluna-nome">{nomeCol}</span>
+                      <span className="kb-coluna-num">{naColuna.length}</span>
+                    </div>
+                    {naColuna.length ? (
+                      naColuna.map((p) => (
+                        <Cartao key={p.id} p={p} onAbrir={() => setDetalhe(p)} onMover={mover} />
+                      ))
+                    ) : (
+                      <div className="kb-vazia">—</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
