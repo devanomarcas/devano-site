@@ -100,11 +100,28 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
   // mesmo que haja também um filtro de pessoa aplicado.
   let colunas: string[];
   if (filtro === "todos") {
-    const maxF = Math.max(7, ...visiveis.map((p) => p.fases.length || 0));
+    const maxF = Math.max(1, ...visiveis.map((p) => p.fases.length || 0));
     colunas = Array.from({ length: maxF }, (_, i) => `Etapa ${i + 1}`);
   } else {
     colunas = FASES_PADRAO[filtro];
   }
+
+  // Em que coluna cada cartão entra.
+  //
+  // Um projeto pode ter pulado fases no cadastro (uma marca sem naming, por
+  // exemplo). Nesse caso a posição da fase dentro do projeto — o fase_atual —
+  // não corresponde à posição dela na lista completa do tipo: a 6ª fase de um
+  // projeto sem naming é a 7ª da lista padrão. Por isso, quando as colunas têm
+  // nome de fase, o encaixe é feito pelo NOME da fase atual, não pelo número.
+  // Só no modo "Todos", em que as colunas são "Etapa 1, 2, 3…", o número vale.
+  const colunaDoProjeto = new Map<string, number>();
+  visiveis.forEach((p) => {
+    const atual = p.fases.find((f) => f.ordem === p.fase_atual);
+    let idx = -1;
+    if (filtro !== "todos" && atual) idx = colunas.indexOf(atual.nome);
+    if (idx < 0) idx = Math.min(Math.max(p.fase_atual, 0), colunas.length - 1);
+    colunaDoProjeto.set(p.id, idx);
+  });
 
   const medir = useCallback(() => {
     const el = boardRef.current;
@@ -250,7 +267,7 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
             <div className="kb-board" ref={boardRef}
               onScroll={medir}>
               {colunas.map((nomeCol, idx) => {
-                const naColuna = visiveis.filter((p) => p.fase_atual === idx);
+                const naColuna = visiveis.filter((p) => colunaDoProjeto.get(p.id) === idx);
                 return (
                   <div className="kb-coluna" key={idx}>
                     <div className="kb-coluna-head">
