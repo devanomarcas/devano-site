@@ -570,3 +570,24 @@ select.editor-input { cursor: pointer; }
 .fg-tipo-nome{flex:1;font-size:13px;color:#1A1C19;}
 .fg-tipo-valor{font-size:13px;font-weight:600;color:#444D42;}
 @media (max-width:720px){.fg-cards{grid-template-columns:1fr;}.fg-duas{grid-template-columns:1fr;}}
+
+/* ===== MELHORIAS: filtro pessoa, fase no card, histórico obs ===== */
+.kb-filtros-pessoas{margin-top:-8px;margin-bottom:20px;align-items:center;}
+.kb-filtros-label{font-size:12px;color:#9A9A92;font-weight:500;margin-right:4px;}
+.kb-chip.pessoa{font-size:12.5px;padding:6px 13px;}
+.kb-chip.pessoa.on{background:#606D50;border-color:#606D50;color:#fff;}
+.kb-chip.limpar{border-color:#A3654A;color:#A3654A;background:#fff;font-size:12px;}
+
+.kb-card-fase{font-size:12px;font-weight:600;color:#606D50;background:#EDF0E9;border-radius:4px;padding:4px 8px;display:inline-block;margin-bottom:8px;}
+
+.kb-card-obs-cont{display:block;font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:#9A9A92;font-weight:600;margin-bottom:3px;}
+
+.kb-obs-nova{margin-bottom:20px;}
+.kb-obs-historico{display:flex;flex-direction:column;gap:10px;}
+.kb-obs-item{background:#fff;border:1px solid #E3E0D8;border-radius:6px;padding:12px 14px;border-left:3px solid #606D50;}
+.kb-obs-item-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.kb-obs-data{font-size:11px;font-weight:600;color:#606D50;text-transform:capitalize;}
+.kb-obs-apagar{border:none;background:none;font-family:inherit;font-size:11px;color:#9A9A92;cursor:pointer;}
+.kb-obs-apagar:hover{color:#A3654A;text-decoration:underline;}
+.kb-obs-texto{font-size:13px;color:#1A1C19;line-height:1.5;}
+.kb-obs-autor{font-size:10px;color:#9A9A92;margin-top:6px;}

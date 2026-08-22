@@ -47,6 +47,13 @@ export default async function ProjetosPage() {
     .select("projeto_id, perfil_id");
   const parts = partsRaw ?? [];
 
+  // observações (histórico) por projeto
+  const { data: obsRaw } = await admin
+    .from("observacoes")
+    .select("*")
+    .order("criado_em", { ascending: false });
+  const obs = obsRaw ?? [];
+
   const projetos: ProjetoDB[] = (projetosRaw ?? []).map((p) => ({
     id: p.id,
     nome: p.nome,
@@ -62,6 +69,9 @@ export default async function ProjetosPage() {
     participantesIds: parts
       .filter((pt) => pt.projeto_id === p.id)
       .map((pt) => pt.perfil_id),
+    observacoes: obs
+      .filter((o) => o.projeto_id === p.id)
+      .map((o) => ({ id: o.id, texto: o.texto, autor: o.autor, criado_em: o.criado_em })),
   }));
 
   return (
@@ -97,7 +107,7 @@ export default async function ProjetosPage() {
           </div>
         )}
 
-        <KanbanProjetos projetos={projetos} pessoas={pessoas} papel={papel} />
+        <KanbanProjetos projetos={projetos} pessoas={pessoas} papel={papel} autor={user?.email ?? ""} />
       </main>
     </div>
   );

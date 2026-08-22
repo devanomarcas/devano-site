@@ -23,6 +23,14 @@ export type ProjetoDB = {
   fases: FaseDB[];
   participantes: string[];
   participantesIds: string[];
+  observacoes: ObsDB[];
+};
+
+export type ObsDB = {
+  id: string;
+  texto: string;
+  autor: string | null;
+  criado_em: string;
 };
 
 export type Pessoa = { id: string; nome: string };
@@ -51,9 +59,16 @@ function dCurto(iso: string | null): string {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
-export default function KanbanProjetos({ projetos, pessoas, papel }: { projetos: ProjetoDB[]; pessoas: Pessoa[]; papel: "gestor" | "equipe" | null }) {
+function dataHora(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" }) +
+    ", " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { projetos: ProjetoDB[]; pessoas: Pessoa[]; papel: "gestor" | "equipe" | null; autor: string }) {
   const router = useRouter();
   const [filtro, setFiltro] = useState<string>("todos");
+  const [filtroPessoa, setFiltroPessoa] = useState<string>("");
   const [modalCad, setModalCad] = useState(false);
   const [detalhe, setDetalhe] = useState<ProjetoDB | null>(null);
 
@@ -62,10 +77,13 @@ export default function KanbanProjetos({ projetos, pessoas, papel }: { projetos:
     ["visual", "Comunicação visual"], ["excepcional", "Excepcionais"],
   ];
 
-  const visiveis = projetos.filter((p) => filtro === "todos" || p.tipo === filtro);
+  const visiveis = projetos.filter((p) => {
+    if (filtroPessoa) return p.participantes.includes(filtroPessoa);
+    return filtro === "todos" || p.tipo === filtro;
+  });
 
   let colunas: string[];
-  if (filtro === "todos") {
+  if (filtroPessoa || filtro === "todos") {
     const maxF = Math.max(7, ...visiveis.map((p) => p.fases.length || 0));
     colunas = Array.from({ length: maxF }, (_, i) => `Etapa ${i + 1}`);
   } else {
@@ -88,12 +106,29 @@ export default function KanbanProjetos({ projetos, pessoas, papel }: { projetos:
       <div className="kb-topo">
         <div className="kb-filtros">
           {tipos.map(([v, l]) => (
-            <button key={v} className={`kb-chip ${filtro === v ? "on" : ""}`} onClick={() => setFiltro(v)}>
+            <button key={v} className={`kb-chip ${filtro === v && !filtroPessoa ? "on" : ""}`}
+              onClick={() => { setFiltro(v); setFiltroPessoa(""); }}>
               {l}
             </button>
           ))}
         </div>
         <button className="kb-novo" onClick={() => setModalCad(true)}>+ Novo projeto</button>
+      </div>
+
+      <div className="kb-filtros kb-filtros-pessoas">
+        <span className="kb-filtros-label">Por pessoa:</span>
+        {pessoas.map((pe) => (
+          <button key={pe.id} className={`kb-chip pessoa ${filtroPessoa === pe.nome ? "on" : ""}`}
+            onClick={() => {
+              if (filtroPessoa === pe.nome) { setFiltroPessoa(""); }
+              else { setFiltroPessoa(pe.nome); setFiltro("todos"); }
+            }}>
+            {pe.nome}
+          </button>
+        ))}
+        {filtroPessoa && (
+          <button className="kb-chip limpar" onClick={() => setFiltroPessoa("")}>× limpar</button>
+        )}
       </div>
 
       {visiveis.length === 0 ? (
@@ -122,7 +157,7 @@ export default function KanbanProjetos({ projetos, pessoas, papel }: { projetos:
       )}
 
       {modalCad && <ModalCadastro pessoas={pessoas} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
-      {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
+      {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} autor={autor} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
     </div>
   );
 }
@@ -132,15 +167,23 @@ function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; on
   const periodo = faseAtual ? `${dCurto(faseAtual.inicio)} – ${dCurto(faseAtual.fim)}` : "—";
   const podeVoltar = p.fase_atual > 0;
   const podeAvancar = p.fase_atual < p.fases.length - 1;
+  const nUpdates = p.observacoes.length;
+  const ultima = nUpdates > 0 ? p.observacoes[0] : null; // já vem ordenado desc
   return (
     <div className={`kb-card ${p.tipo}`} onClick={onAbrir}>
       <div className="kb-card-tipo">{TIPO_LABEL[p.tipo]}</div>
       <div className="kb-card-nome">{p.nome}</div>
+      {faseAtual && <div className="kb-card-fase">{faseAtual.nome}</div>}
       <div className="kb-card-meta">
         <span className="kb-card-cliente">{p.cliente || "—"}</span>
         <span className="kb-card-periodo">📅 {periodo}</span>
       </div>
-      {p.observacao && <div className="kb-card-obs">{p.observacao}</div>}
+      {ultima && (
+        <div className="kb-card-obs">
+          <span className="kb-card-obs-cont">{nUpdates} {nUpdates === 1 ? "atualização" : "atualizações"} · última:</span>
+          {ultima.texto}
+        </div>
+      )}
       {p.participantes.length > 0 && (
         <div className="kb-card-parts">
           {p.participantes.map((n, i) => (
@@ -274,28 +317,40 @@ function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFe
   );
 }
 
-function ModalDetalhe({ p, papel, pessoas, onFechar, onSalvo }: { p: ProjetoDB; papel: "gestor" | "equipe" | null; pessoas: Pessoa[]; onFechar: () => void; onSalvo: () => void }) {
+function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: ProjetoDB; papel: "gestor" | "equipe" | null; pessoas: Pessoa[]; autor: string; onFechar: () => void; onSalvo: () => void }) {
   const [aba, setAba] = useState<"gestao" | "financeiro">("gestao");
-  const [obs, setObs] = useState(p.observacao || "");
+  const [novaObs, setNovaObs] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [editando, setEditando] = useState(false);
   const faseAtualNome = p.fases.find((f) => f.ordem === p.fase_atual)?.nome || "—";
   const ehGestor = papel === "gestor";
 
-  // estados de ediÃ§Ã£o
+  // estados de edição
   const [edNome, setEdNome] = useState(p.nome);
   const [edCliente, setEdCliente] = useState(p.cliente || "");
   const [edFases, setEdFases] = useState(p.fases.map((f) => ({ id: f.id, nome: f.nome, inicio: f.inicio || "", fim: f.fim || "" })));
   const [edParts, setEdParts] = useState<string[]>(p.participantesIds);
 
-  async function salvarObs() {
+  async function adicionarObs() {
+    if (!novaObs.trim()) return;
     setSalvando(true);
     await fetch("/api/projetos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "observacao", id: p.id, observacao: obs }),
+      body: JSON.stringify({ acao: "obs_add", projeto_id: p.id, texto: novaObs, autor }),
     });
     setSalvando(false);
+    setNovaObs("");
+    onSalvo();
+  }
+
+  async function apagarObs(obsId: string) {
+    if (!confirm("Apagar esta atualização?")) return;
+    await fetch("/api/projetos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "obs_del", id: obsId }),
+    });
     onSalvo();
   }
 
@@ -312,7 +367,7 @@ function ModalDetalhe({ p, papel, pessoas, onFechar, onSalvo }: { p: ProjetoDB; 
   }
 
   async function apagar() {
-    if (!confirm("Apagar este projeto? Esta aÃ§Ã£o nÃ£o pode ser desfeita.")) return;
+    if (!confirm("Apagar este projeto? Esta ação não pode ser desfeita.")) return;
     setSalvando(true);
     await fetch("/api/projetos", {
       method: "POST",
@@ -333,7 +388,7 @@ function ModalDetalhe({ p, papel, pessoas, onFechar, onSalvo }: { p: ProjetoDB; 
         <div className="kb-modal-body">
           {!editando && (
             <div className="kb-abas">
-              <button className={`kb-aba ${aba === "gestao" ? "on" : ""}`} onClick={() => setAba("gestao")}>GestÃ£o</button>
+              <button className={`kb-aba ${aba === "gestao" ? "on" : ""}`} onClick={() => setAba("gestao")}>Gestão</button>
               {ehGestor && (
                 <button className={`kb-aba ${aba === "financeiro" ? "on" : ""}`} onClick={() => setAba("financeiro")}>Financeiro</button>
               )}
@@ -362,7 +417,7 @@ function ModalDetalhe({ p, papel, pessoas, onFechar, onSalvo }: { p: ProjetoDB; 
               </div>
               <div className="kb-label">Datas das fases</div>
               <div className="kb-fases-cad">
-                <div className="kb-datas-labels"><span>InÃ­cio</span><span>Fim/apres.</span></div>
+                <div className="kb-datas-labels"><span>Início</span><span>Fim/apres.</span></div>
                 {edFases.map((f, i) => (
                   <div className="kb-fase-cad ativa" key={f.id}>
                     <span></span>
@@ -375,7 +430,7 @@ function ModalDetalhe({ p, papel, pessoas, onFechar, onSalvo }: { p: ProjetoDB; 
               <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "space-between" }}>
                 <button className="kb-btn-ghost" onClick={() => setEditando(false)}>Voltar</button>
                 <button className="kb-btn-primary" onClick={salvarEdicao} disabled={salvando}>
-                  {salvando ? "Salvando…" : "Salvar alteraÃ§Ãµes"}
+                  {salvando ? "Salvando…" : "Salvar alterações"}
                 </button>
               </div>
             </>
@@ -401,13 +456,30 @@ function ModalDetalhe({ p, papel, pessoas, onFechar, onSalvo }: { p: ProjetoDB; 
                 );
               })}
               <div className="kb-obs-bloco">
-                <div className="kb-det-fases-titulo">ObservaÃ§Ã£o da fase atual</div>
+                <div className="kb-det-fases-titulo">Atualizações do projeto</div>
                 <div className="kb-obs-atual">Fase atual: <strong>{faseAtualNome}</strong></div>
-                <textarea className="kb-textarea" value={obs} onChange={(e) => setObs(e.target.value)}
-                  placeholder="Ex.: identidade apresentada, aguardando aprovaÃ§Ã£o do cliente..." />
-                <button className="kb-btn-primary" onClick={salvarObs} disabled={salvando} style={{ marginTop: 10 }}>
-                  {salvando ? "Salvando…" : "Salvar observaÃ§Ã£o"}
-                </button>
+
+                <div className="kb-obs-nova">
+                  <textarea className="kb-textarea" value={novaObs} onChange={(e) => setNovaObs(e.target.value)}
+                    placeholder="Escreva uma atualização... ex.: identidade apresentada, aguardando aprovação do cliente." />
+                  <button className="kb-btn-primary" onClick={adicionarObs} disabled={salvando} style={{ marginTop: 10 }}>
+                    {salvando ? "Adicionando..." : "Adicionar atualização"}
+                  </button>
+                </div>
+
+                <div className="kb-obs-historico">
+                  {p.observacoes.length === 0 && <p className="kb-dica">Nenhuma atualização ainda.</p>}
+                  {p.observacoes.map((o) => (
+                    <div className="kb-obs-item" key={o.id}>
+                      <div className="kb-obs-item-topo">
+                        <span className="kb-obs-data">{dataHora(o.criado_em)}</span>
+                        <button className="kb-obs-apagar" onClick={() => apagarObs(o.id)}>apagar</button>
+                      </div>
+                      <div className="kb-obs-texto">{o.texto}</div>
+                      {o.autor && o.autor !== "migrado" && <div className="kb-obs-autor">{o.autor}</div>}
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="kb-det-acoes">
                 <button className="kb-link-edit" onClick={() => setEditando(true)}>Editar projeto</button>

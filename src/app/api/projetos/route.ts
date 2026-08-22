@@ -121,6 +121,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ---- Adicionar observação (nova entrada no histórico) ----
+    if (acao === "obs_add") {
+      const { projeto_id, texto, autor } = corpo;
+      if (!projeto_id || !texto?.trim()) {
+        return NextResponse.json({ error: "Observação vazia." }, { status: 400 });
+      }
+      const { error } = await admin
+        .from("observacoes")
+        .insert({ projeto_id, texto: texto.trim(), autor: autor || null });
+      if (error) throw error;
+      revalidatePath("/admin/projetos");
+      return NextResponse.json({ ok: true });
+    }
+
+    // ---- Apagar observação ----
+    if (acao === "obs_del") {
+      const { id } = corpo;
+      const { error } = await admin.from("observacoes").delete().eq("id", id);
+      if (error) throw error;
+      revalidatePath("/admin/projetos");
+      return NextResponse.json({ ok: true });
+    }
+
     // ---- Apagar projeto ----
     if (acao === "apagar") {
       const { id } = corpo;
