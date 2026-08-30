@@ -79,7 +79,6 @@ type DefAbertura = {
   chave: string;
   titulo: string;
   ajuda?: string;
-  auto?: "card" | "cronograma";
   campo?: "texto" | "data" | "datahora";
   rotulo?: string;
   confirmacao?: string;
@@ -87,47 +86,37 @@ type DefAbertura = {
 
 const ABERTURA: DefAbertura[] = [
   {
-    chave: "card",
-    titulo: "Card do projeto aberto no sistema",
-    auto: "card",
-    ajuda: "Cumprido no momento em que você cadastrou o projeto.",
-  },
-  {
-    chave: "cronograma",
-    titulo: "Cronograma do projeto criado",
-    auto: "cronograma",
-    ajuda: "Marca sozinho quando todas as fases tiverem início e fim preenchidos.",
-  },
-  {
     chave: "grupo",
-    titulo: "Grupo criado com o time do projeto",
+    titulo: "Grupo criado com o time",
     campo: "texto",
     rotulo: "Link ou nome do grupo",
   },
   {
     chave: "aviso",
-    titulo: "Cliente avisada de que será inserida no grupo",
+    titulo: "Cliente avisada da entrada no grupo",
+    ajuda: "Ninguém é adicionado de surpresa.",
     campo: "data",
     rotulo: "Data do contato",
   },
   {
     chave: "boasvindas",
-    titulo: "Boas-vindas dadas no grupo e equipe apresentada",
+    titulo: "Boas-vindas dadas e equipe apresentada",
     campo: "data",
     rotulo: "Data",
   },
   {
     chave: "reuniao",
-    titulo: "Reunião de pontapé inicial marcada com a cliente",
+    titulo: "Reunião de pontapé marcada",
+    ajuda: "Com a cliente, e já confirmada.",
     campo: "datahora",
-    rotulo: "Data e hora da reunião",
+    rotulo: "Data e hora",
   },
   {
     chave: "briefing",
-    titulo: "Formulário de briefing criado e adequado ao projeto",
+    titulo: "Briefing criado e adequado à cliente",
     campo: "texto",
     rotulo: "Link do formulário",
-    confirmacao: "Revisei o formulário inteiro e não há menção a outros clientes.",
+    confirmacao: "Reli o formulário e não há menção a outros clientes.",
   },
 ];
 
@@ -137,16 +126,7 @@ const NOTA_MODALIDADE: Record<string, string> = {
   excepcional: "Excepcional. As fases são livres, defina-as conforme o escopo contratado.",
 };
 
-function autoFeito(def: DefAbertura, p: ProjetoDB): boolean {
-  if (def.auto === "card") return true;
-  if (def.auto === "cronograma") {
-    return p.fases.length > 0 && p.fases.every((f) => !!f.inicio && !!f.fim);
-  }
-  return false;
-}
-
-function itemCumprido(def: DefAbertura, it: ItemAbertura | undefined, p: ProjetoDB): boolean {
-  if (def.auto) return autoFeito(def, p);
+function itemCumprido(def: DefAbertura, it: ItemAbertura | undefined): boolean {
   if (!it?.feito) return false;
   if (def.confirmacao && !it.confirmado) return false;
   return true;
@@ -157,7 +137,7 @@ export function statusAbertura(p: ProjetoDB) {
   const pendentes: string[] = [];
   let feitos = 0;
   ABERTURA.forEach((def) => {
-    if (itemCumprido(def, mapa.get(def.chave), p)) feitos++;
+    if (itemCumprido(def, mapa.get(def.chave))) feitos++;
     else pendentes.push(def.titulo);
   });
   return { feitos, total: ABERTURA.length, completa: pendentes.length === 0, pendentes };
@@ -402,7 +382,7 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
         </div>
       )}
 
-      {modalCad && <ModalCadastro pessoas={pessoas} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
+      {modalCad && <ModalCadastro pessoas={pessoas} autor={autor} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
       {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} autor={autor} onFechar={() => { setDetalhe(null); router.refresh(); }} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
       {travado && (
         <ModalTrava
@@ -466,7 +446,10 @@ function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; on
   );
 }
 
-function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFechar: () => void; onSalvo: () => void }) {
+function ModalCadastro({ pessoas, autor, onFechar, onSalvo }: { pessoas: Pessoa[]; autor: string; onFechar: () => void; onSalvo: () => void }) {
+  // Duas etapas: primeiro o checklist de abertura, depois o cadastro.
+  const [passo, setPasso] = useState<1 | 2>(1);
+
   const [nome, setNome] = useState("");
   const [cliente, setCliente] = useState("");
   const [tipo, setTipo] = useState<"branding" | "visual" | "excepcional">("branding");
@@ -475,15 +458,45 @@ function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFe
   const [datas, setDatas] = useState<{ inicio: string; fim: string }[]>(
     FASES_PADRAO["branding"].map(() => ({ inicio: "", fim: "" }))
   );
+
+  type Marca = { feito: boolean; valor: string; confirmado: boolean };
+  const [itens, setItens] = useState<Record<string, Marca>>({});
+  const [pedindoMotivo, setPedindoMotivo] = useState(false);
+  const [motivo, setMotivo] = useState("");
+
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const fases = FASES_PADRAO[tipo];
 
+  function marca(chave: string): Marca {
+    return itens[chave] || { feito: false, valor: "", confirmado: false };
+  }
+  function mudar(chave: string, m: Partial<Marca>) {
+    setItens((prev) => ({ ...prev, [chave]: { ...marca(chave), ...m } }));
+  }
+
+  const faltando = ABERTURA.filter((def) => {
+    const it = marca(def.chave);
+    if (!it.feito) return true;
+    if (def.confirmacao && !it.confirmado) return true;
+    return false;
+  });
+
   function trocarTipo(novo: "branding" | "visual" | "excepcional") {
     setTipo(novo);
     setMarcadas(FASES_PADRAO[novo].map(() => true));
     setDatas(FASES_PADRAO[novo].map(() => ({ inicio: "", fim: "" })));
+  }
+
+  function avancar(comMotivo: boolean) {
+    if (!nome.trim()) { setErro("Dê um nome ao projeto."); return; }
+    if (comMotivo && motivo.trim().length < 10) {
+      setErro("Escreva o motivo com pelo menos uma frase.");
+      return;
+    }
+    setErro(null);
+    setPasso(2);
   }
 
   async function salvar() {
@@ -499,7 +512,18 @@ function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFe
       const res = await fetch("/api/projetos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acao: "criar", nome, cliente, tipo, fases: fasesSel, participantes }),
+        body: JSON.stringify({
+          acao: "criar",
+          nome, cliente, tipo,
+          fases: fasesSel,
+          participantes,
+          autor,
+          justificativa: faltando.length > 0 ? motivo.trim() : null,
+          abertura: ABERTURA.map((def) => {
+            const it = marca(def.chave);
+            return { chave: def.chave, feito: it.feito, valor: it.valor || null, confirmado: it.confirmado };
+          }),
+        }),
       });
       const d = await res.json();
       if (res.ok) onSalvo();
@@ -515,69 +539,161 @@ function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFe
     <div className="kb-overlay" onClick={onFechar}>
       <div className="kb-modal" onClick={(e) => e.stopPropagation()}>
         <div className="kb-modal-head">
-          <h2>Novo projeto</h2>
+          <h2>{passo === 1 ? "Abertura do projeto" : "Cadastro do projeto"}</h2>
+          <span className="kb-passo">Etapa {passo} de 2</span>
           <button className="kb-modal-x" onClick={onFechar}>×</button>
         </div>
-        <div className="kb-modal-body">
-          <label className="kb-label">Nome do projeto
-            <input className="kb-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Rebranding Encaixe Móveis" />
-          </label>
-          <label className="kb-label">Cliente
-            <input className="kb-input" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Ex.: Encaixe Móveis" />
-          </label>
-          <label className="kb-label">Tipo de projeto
-            <select className="kb-input" value={tipo} onChange={(e) => trocarTipo(e.target.value as any)}>
-              <option value="branding">Branding completo</option>
-              <option value="visual">Comunicação visual</option>
-              <option value="excepcional">Excepcional</option>
-            </select>
-          </label>
-          <div className="kb-label">Participantes do projeto</div>
-          <div className="kb-parts-sel">
-            {pessoas.length === 0 && <span className="kb-dica">Nenhuma pessoa cadastrada.</span>}
-            {pessoas.map((pe) => {
-              const on = participantes.includes(pe.id);
-              return (
-                <button
-                  type="button"
-                  key={pe.id}
-                  className={`kb-part-chip ${on ? "on" : ""}`}
-                  onClick={() => {
-                    setParticipantes((prev) =>
-                      prev.includes(pe.id) ? prev.filter((x) => x !== pe.id) : [...prev, pe.id]
-                    );
-                  }}
-                >
-                  {on ? "✓ " : ""}{pe.nome}
-                </button>
-              );
-            })}
-          </div>
 
-          <div className="kb-label">Fases e cronograma</div>
-          <div className="kb-fases-cad">
-            <div className="kb-datas-labels"><span>Início</span><span>Fim/apres.</span></div>
-            {fases.map((f, i) => (
-              <div className={`kb-fase-cad ${marcadas[i] ? "ativa" : "inativa"}`} key={i}>
-                <input type="checkbox" checked={marcadas[i]} onChange={() => {
-                  const m = [...marcadas]; m[i] = !m[i]; setMarcadas(m);
-                }} />
-                <span className="kb-fase-cad-nome">{f}</span>
-                <input type="date" disabled={!marcadas[i]} value={datas[i].inicio}
-                  onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], inicio: e.target.value }; setDatas(d); }} />
-                <input type="date" disabled={!marcadas[i]} value={datas[i].fim}
-                  onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], fim: e.target.value }; setDatas(d); }} />
+        <div className="kb-modal-body">
+          {passo === 1 ? (
+            <>
+              <label className="kb-label">Nome do projeto
+                <input className="kb-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ateliê Ravena" />
+              </label>
+              <div className="kb-dupla">
+                <label className="kb-label">Cliente
+                  <input className="kb-input" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Ex.: Ateliê Ravena" />
+                </label>
+                <label className="kb-label">Modalidade
+                  <select className="kb-input" value={tipo} onChange={(e) => trocarTipo(e.target.value as any)}>
+                    <option value="branding">Branding completo</option>
+                    <option value="visual">Comunicação visual</option>
+                    <option value="excepcional">Excepcional</option>
+                  </select>
+                </label>
               </div>
-            ))}
-          </div>
-          <p className="kb-dica">Marque as fases que este projeto terá e defina início e fim de cada uma. A data de fim costuma ser o dia da apresentação ao cliente. Tudo pode ser ajustado depois.</p>
-          {erro && <p className="kb-erro">{erro}</p>}
+
+              <div className={`ab-barra ${faltando.length === 0 ? "ok" : ""}`}>
+                <div className="ab-barra-txt">
+                  {faltando.length === 0
+                    ? "Tudo pronto. Pode avançar para o cadastro."
+                    : `Antes de abrir o projeto: ${ABERTURA.length - faltando.length} de ${ABERTURA.length}.`}
+                </div>
+                <div className="ab-barra-trilho">
+                  <div className="ab-barra-cheio" style={{ width: `${((ABERTURA.length - faltando.length) / ABERTURA.length) * 100}%` }} />
+                </div>
+              </div>
+
+              <div className="ab-lista">
+                {ABERTURA.map((def) => {
+                  const it = marca(def.chave);
+                  const ok = it.feito && (!def.confirmacao || it.confirmado);
+                  return (
+                    <div className={`ab-item ${ok ? "feito" : ""}`} key={def.chave}>
+                      <button type="button" className={`ab-check ${ok ? "on" : ""}`} aria-label={def.titulo}
+                        onClick={() => mudar(def.chave, { feito: !it.feito })}>
+                        {ok ? "✓" : ""}
+                      </button>
+                      <div className="ab-corpo">
+                        <div className="ab-titulo">{def.titulo}</div>
+                        {def.ajuda && <div className="ab-ajuda">{def.ajuda}</div>}
+                        {def.campo && (
+                          <label className="ab-campo">
+                            <span>{def.rotulo}</span>
+                            <input
+                              type={def.campo === "data" ? "date" : def.campo === "datahora" ? "datetime-local" : "text"}
+                              value={it.valor}
+                              placeholder={def.campo === "texto" ? "Cole aqui" : undefined}
+                              onChange={(e) => mudar(def.chave, { valor: e.target.value })}
+                            />
+                          </label>
+                        )}
+                        {def.confirmacao && (
+                          <label className="ab-confirma">
+                            <input type="checkbox" checked={it.confirmado}
+                              onChange={() => mudar(def.chave, { confirmado: !it.confirmado })} />
+                            <span>{def.confirmacao}</span>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {faltando.length > 0 && (
+                <div className="ab-excecao">
+                  {!pedindoMotivo ? (
+                    <button className="kb-link-edit" onClick={() => setPedindoMotivo(true)}>
+                      É uma exceção e preciso seguir mesmo assim
+                    </button>
+                  ) : (
+                    <>
+                      <p className="kb-dica" style={{ marginTop: 0 }}>
+                        Escreva o motivo. Ele fica registrado no projeto e entra no histórico, visível para o gestor.
+                      </p>
+                      <textarea className="kb-textarea" value={motivo} onChange={(e) => setMotivo(e.target.value)}
+                        placeholder="Ex.: cliente antecipou a reunião para hoje, o briefing será enviado ainda esta tarde." />
+                      <button className="kb-btn-ghost" style={{ marginTop: 10 }} onClick={() => avancar(true)}>
+                        Avançar com justificativa
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              {erro && <p className="kb-erro">{erro}</p>}
+            </>
+          ) : (
+            <>
+              <div className="kb-resumo-passo">
+                <strong>{nome}</strong>{cliente ? ` · ${cliente}` : ""} · {TIPO_LABEL[tipo]}
+              </div>
+
+              <div className="kb-label">Participantes do projeto</div>
+              <div className="kb-parts-sel">
+                {pessoas.length === 0 && <span className="kb-dica">Nenhuma pessoa cadastrada.</span>}
+                {pessoas.map((pe) => {
+                  const on = participantes.includes(pe.id);
+                  return (
+                    <button type="button" key={pe.id} className={`kb-part-chip ${on ? "on" : ""}`}
+                      onClick={() => setParticipantes((prev) => prev.includes(pe.id) ? prev.filter((x) => x !== pe.id) : [...prev, pe.id])}>
+                      {on ? "✓ " : ""}{pe.nome}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="kb-label">Fases e cronograma</div>
+              <div className="ab-nota" style={{ marginTop: 0, marginBottom: 10 }}>{NOTA_MODALIDADE[tipo]}</div>
+              <div className="kb-fases-cad">
+                <div className="kb-datas-labels"><span>Início</span><span>Fim/apres.</span></div>
+                {fases.map((f, i) => (
+                  <div className={`kb-fase-cad ${marcadas[i] ? "ativa" : "inativa"}`} key={i}>
+                    <input type="checkbox" checked={marcadas[i]} onChange={() => {
+                      const m = [...marcadas]; m[i] = !m[i]; setMarcadas(m);
+                    }} />
+                    <span className="kb-fase-cad-nome">{f}</span>
+                    <input type="date" disabled={!marcadas[i]} value={datas[i].inicio}
+                      onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], inicio: e.target.value }; setDatas(d); }} />
+                    <input type="date" disabled={!marcadas[i]} value={datas[i].fim}
+                      onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], fim: e.target.value }; setDatas(d); }} />
+                  </div>
+                ))}
+              </div>
+              <p className="kb-dica">Desmarque as fases que este projeto não terá. A data de fim costuma ser o dia da apresentação ao cliente, e tudo pode ser ajustado depois.</p>
+              {erro && <p className="kb-erro">{erro}</p>}
+            </>
+          )}
         </div>
+
         <div className="kb-modal-foot">
-          <button className="kb-btn-ghost" onClick={onFechar}>Cancelar</button>
-          <button className="kb-btn-primary" onClick={salvar} disabled={salvando}>
-            {salvando ? "Salvando…" : "Cadastrar projeto"}
-          </button>
+          {passo === 1 ? (
+            <>
+              <button className="kb-btn-ghost" onClick={onFechar}>Cancelar</button>
+              <button className="kb-btn-primary" onClick={() => avancar(false)}
+                disabled={faltando.length > 0 || !nome.trim()}
+                title={faltando.length > 0 ? "Conclua o checklist para avançar" : undefined}>
+                Avançar →
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="kb-btn-ghost" onClick={() => setPasso(1)}>← Voltar</button>
+              <button className="kb-btn-primary" onClick={salvar} disabled={salvando}>
+                {salvando ? "Abrindo…" : "Abrir projeto"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -815,7 +931,7 @@ function AbaAbertura({ p, autor }: { p: ProjetoDB; autor: string }) {
       <div className={`ab-barra ${st.completa ? "ok" : ""}`}>
         <div className="ab-barra-txt">
           {st.completa
-            ? "Abertura concluída. O projeto já pode avançar de fase."
+            ? "Abertura concluída. Esta aba guarda o que foi feito e onde encontrar cada coisa."
             : `Abertura ${st.feitos} de ${st.total}. Enquanto não estiver completa, o projeto não avança de fase.`}
         </div>
         <div className="ab-barra-trilho">
@@ -832,14 +948,12 @@ function AbaAbertura({ p, autor }: { p: ProjetoDB; autor: string }) {
       <div className="ab-lista">
         {ABERTURA.map((def) => {
           const it = itens[def.chave] || vazio(def.chave);
-          const auto = !!def.auto;
-          const feito = itemCumprido(def, it, p);
+          const feito = itemCumprido(def, it);
           return (
-            <div className={`ab-item ${feito ? "feito" : ""} ${auto ? "auto" : ""}`} key={def.chave}>
+            <div className={`ab-item ${feito ? "feito" : ""}`} key={def.chave}>
               <button
                 type="button"
                 className={`ab-check ${feito ? "on" : ""}`}
-                disabled={auto}
                 aria-label={def.titulo}
                 onClick={() => salvar(def.chave, { feito: !it.feito })}
               >
@@ -849,9 +963,6 @@ function AbaAbertura({ p, autor }: { p: ProjetoDB; autor: string }) {
               <div className="ab-corpo">
                 <div className="ab-titulo">{def.titulo}</div>
 
-                {def.auto === "cronograma" && (
-                  <div className="ab-nota">{NOTA_MODALIDADE[p.tipo]}</div>
-                )}
                 {def.ajuda && <div className="ab-ajuda">{def.ajuda}</div>}
 
                 {def.campo && (
@@ -877,7 +988,7 @@ function AbaAbertura({ p, autor }: { p: ProjetoDB; autor: string }) {
                   </label>
                 )}
 
-                {!auto && it.feito && it.autor && (
+                {it.feito && it.autor && (
                   <div className="ab-assinatura">
                     marcado por {it.autor}{it.feito_em ? ` em ${dataHora(it.feito_em)}` : ""}
                   </div>

@@ -26,16 +26,53 @@ export async function POST(request: Request) {
   try {
     // ---- Criar projeto novo com fases ----
     if (acao === "criar") {
-      const { nome, cliente, tipo, fases } = corpo;
+      const { nome, cliente, tipo, fases, autor, justificativa, abertura } = corpo;
       if (!nome || !tipo || !Array.isArray(fases) || fases.length === 0) {
         return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
       }
+      // O checklist de abertura é cumprido ANTES de o projeto existir, na
+      // primeira etapa do cadastro. Se veio justificativa, é porque o
+      // atendimento abriu por exceção, e isso fica registrado desde o início.
+      const excecao = typeof justificativa === "string" && justificativa.trim().length > 0;
+
       const { data: proj, error: e1 } = await admin
         .from("projetos")
-        .insert({ nome, cliente: cliente || null, tipo, fase_atual: 0, observacao: "" })
+        .insert({
+          nome,
+          cliente: cliente || null,
+          tipo,
+          fase_atual: 0,
+          observacao: "",
+          abertura_justificativa: excecao ? justificativa.trim() : null,
+          abertura_liberada_em: excecao ? new Date().toISOString() : null,
+          abertura_liberada_por: excecao ? autor || null : null,
+        })
         .select()
         .single();
       if (e1) throw e1;
+
+      if (Array.isArray(abertura) && abertura.length > 0) {
+        const agora = new Date().toISOString();
+        await admin.from("abertura_itens").insert(
+          abertura.map((a: any) => ({
+            projeto_id: proj.id,
+            chave: a.chave,
+            feito: !!a.feito,
+            valor: a.valor ?? null,
+            confirmado: !!a.confirmado,
+            autor: a.feito ? autor || null : null,
+            feito_em: a.feito ? agora : null,
+          }))
+        );
+      }
+
+      if (excecao) {
+        await admin.from("observacoes").insert({
+          projeto_id: proj.id,
+          texto: `Projeto aberto com a abertura incompleta. Motivo: ${justificativa.trim()}`,
+          autor: autor || null,
+        });
+      }
 
       const fasesInsert = fases.map((f: any, i: number) => ({
         projeto_id: proj.id,
