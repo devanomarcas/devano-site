@@ -24,6 +24,18 @@ export type ProjetoDB = {
   participantes: string[];
   participantesIds: string[];
   observacoes: ObsDB[];
+  abertura: ItemAbertura[];
+  aberturaLiberada: boolean;
+  aberturaJustificativa: string | null;
+};
+
+export type ItemAbertura = {
+  chave: string;
+  feito: boolean;
+  valor: string | null;
+  confirmado: boolean;
+  autor: string | null;
+  feito_em: string | null;
 };
 
 export type ObsDB = {
@@ -53,8 +65,103 @@ const FASES_PADRAO: Record<string, string[]> = {
   excepcional: ["Definição do escopo", "Em execução", "Revisão", "Entrega"],
 };
 
-// largura de uma coluna + o espaço entre elas — usado pelas setas de rolagem
+// largura de uma coluna + o espaço entre elas, usado pelas setas de rolagem
 const PASSO_COLUNA = 264;
+
+// ————————————————————————————————————————————————————————————
+// Checklist de abertura de projeto (executivo de contas)
+//
+// Os dois primeiros itens não são clicáveis: eles já foram cumpridos
+// pelo próprio ato de cadastrar o projeto. O de cronograma marca sozinho
+// quando todas as fases tiverem início e fim preenchidos.
+// ————————————————————————————————————————————————————————————
+type DefAbertura = {
+  chave: string;
+  titulo: string;
+  ajuda?: string;
+  auto?: "card" | "cronograma";
+  campo?: "texto" | "data" | "datahora";
+  rotulo?: string;
+  confirmacao?: string;
+};
+
+const ABERTURA: DefAbertura[] = [
+  {
+    chave: "card",
+    titulo: "Card do projeto aberto no sistema",
+    auto: "card",
+    ajuda: "Cumprido no momento em que você cadastrou o projeto.",
+  },
+  {
+    chave: "cronograma",
+    titulo: "Cronograma do projeto criado",
+    auto: "cronograma",
+    ajuda: "Marca sozinho quando todas as fases tiverem início e fim preenchidos.",
+  },
+  {
+    chave: "grupo",
+    titulo: "Grupo criado com o time do projeto",
+    campo: "texto",
+    rotulo: "Link ou nome do grupo",
+  },
+  {
+    chave: "aviso",
+    titulo: "Cliente avisada de que será inserida no grupo",
+    campo: "data",
+    rotulo: "Data do contato",
+  },
+  {
+    chave: "boasvindas",
+    titulo: "Boas-vindas dadas no grupo e equipe apresentada",
+    campo: "data",
+    rotulo: "Data",
+  },
+  {
+    chave: "reuniao",
+    titulo: "Reunião de pontapé inicial marcada com a cliente",
+    campo: "datahora",
+    rotulo: "Data e hora da reunião",
+  },
+  {
+    chave: "briefing",
+    titulo: "Formulário de briefing criado e adequado ao projeto",
+    campo: "texto",
+    rotulo: "Link do formulário",
+    confirmacao: "Revisei o formulário inteiro e não há menção a outros clientes.",
+  },
+];
+
+const NOTA_MODALIDADE: Record<string, string> = {
+  branding: "Branding completo. Confira se este projeto tem naming antes de montar as datas.",
+  visual: "Comunicação visual. Cinco fases, sem etapa de naming.",
+  excepcional: "Excepcional. As fases são livres, defina-as conforme o escopo contratado.",
+};
+
+function autoFeito(def: DefAbertura, p: ProjetoDB): boolean {
+  if (def.auto === "card") return true;
+  if (def.auto === "cronograma") {
+    return p.fases.length > 0 && p.fases.every((f) => !!f.inicio && !!f.fim);
+  }
+  return false;
+}
+
+function itemCumprido(def: DefAbertura, it: ItemAbertura | undefined, p: ProjetoDB): boolean {
+  if (def.auto) return autoFeito(def, p);
+  if (!it?.feito) return false;
+  if (def.confirmacao && !it.confirmado) return false;
+  return true;
+}
+
+export function statusAbertura(p: ProjetoDB) {
+  const mapa = new Map(p.abertura.map((i) => [i.chave, i]));
+  const pendentes: string[] = [];
+  let feitos = 0;
+  ABERTURA.forEach((def) => {
+    if (itemCumprido(def, mapa.get(def.chave), p)) feitos++;
+    else pendentes.push(def.titulo);
+  });
+  return { feitos, total: ABERTURA.length, completa: pendentes.length === 0, pendentes };
+}
 
 function dCurto(iso: string | null): string {
   if (!iso) return "—";
@@ -74,6 +181,7 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
   const [filtroPessoa, setFiltroPessoa] = useState<string>("");
   const [modalCad, setModalCad] = useState(false);
   const [detalhe, setDetalhe] = useState<ProjetoDB | null>(null);
+  const [travado, setTravado] = useState<ProjetoDB | null>(null);
 
   // rolagem lateral do quadro
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -183,6 +291,11 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
   }
 
   async function mover(p: ProjetoDB, dir: number) {
+    // Avançar exige a abertura concluída. Voltar é sempre livre.
+    if (dir > 0 && !p.aberturaLiberada && !statusAbertura(p).completa) {
+      setTravado(p);
+      return;
+    }
     const nova = Math.max(0, Math.min(p.fases.length - 1, p.fase_atual + dir));
     if (nova === p.fase_atual) return;
     await fetch("/api/projetos", {
@@ -290,12 +403,23 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
       )}
 
       {modalCad && <ModalCadastro pessoas={pessoas} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
-      {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} autor={autor} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
+      {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} autor={autor} onFechar={() => { setDetalhe(null); router.refresh(); }} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
+      {travado && (
+        <ModalTrava
+          p={travado}
+          autor={autor}
+          onFechar={() => setTravado(null)}
+          onAbrirProjeto={() => { const alvo = travado; setTravado(null); setDetalhe(alvo); }}
+          onLiberado={() => { setTravado(null); router.refresh(); }}
+        />
+      )}
     </div>
   );
 }
 
 function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; onMover: (p: ProjetoDB, dir: number) => void }) {
+  const ab = statusAbertura(p);
+  const aberturaPendente = !p.aberturaLiberada && !ab.completa;
   const faseAtual = p.fases.find((f) => f.ordem === p.fase_atual);
   const periodo = faseAtual ? `${dCurto(faseAtual.inicio)} – ${dCurto(faseAtual.fim)}` : "—";
   const podeVoltar = p.fase_atual > 0;
@@ -306,6 +430,9 @@ function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; on
     <div className={`kb-card ${p.tipo}`} onClick={onAbrir}>
       <div className="kb-card-tipo">{TIPO_LABEL[p.tipo]}</div>
       <div className="kb-card-nome">{p.nome}</div>
+      {aberturaPendente && (
+        <div className="kb-selo-abertura">Abertura {ab.feitos}/{ab.total}</div>
+      )}
       {faseAtual && <div className="kb-card-fase">{faseAtual.nome}</div>}
       <div className="kb-card-meta">
         <span className="kb-card-cliente">{p.cliente || "—"}</span>
@@ -326,7 +453,14 @@ function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; on
       )}
       <div className="kb-card-mover" onClick={(e) => e.stopPropagation()}>
         <button onClick={() => onMover(p, -1)} disabled={!podeVoltar}>←</button>
-        <button onClick={() => onMover(p, 1)} disabled={!podeAvancar}>Avançar →</button>
+        <button
+          className={aberturaPendente ? "travado" : ""}
+          title={aberturaPendente ? "Conclua o checklist de abertura para avançar" : undefined}
+          onClick={() => onMover(p, 1)}
+          disabled={!podeAvancar}
+        >
+          {aberturaPendente ? "Avançar" : "Avançar →"}
+        </button>
       </div>
     </div>
   );
@@ -451,7 +585,11 @@ function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFe
 }
 
 function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: ProjetoDB; papel: "gestor" | "equipe" | null; pessoas: Pessoa[]; autor: string; onFechar: () => void; onSalvo: () => void }) {
-  const [aba, setAba] = useState<"gestao" | "financeiro">("gestao");
+  const abInicial = statusAbertura(p);
+  const aberturaPendente = !p.aberturaLiberada && !abInicial.completa;
+  const [aba, setAba] = useState<"gestao" | "abertura" | "financeiro">(
+    aberturaPendente ? "abertura" : "gestao"
+  );
   const [novaObs, setNovaObs] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -522,6 +660,10 @@ function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: Proj
           {!editando && (
             <div className="kb-abas">
               <button className={`kb-aba ${aba === "gestao" ? "on" : ""}`} onClick={() => setAba("gestao")}>Gestão</button>
+              <button className={`kb-aba ${aba === "abertura" ? "on" : ""}`} onClick={() => setAba("abertura")}>
+                Abertura
+                {aberturaPendente && <span className="kb-aba-selo">{abInicial.feitos}/{abInicial.total}</span>}
+              </button>
               {ehGestor && (
                 <button className={`kb-aba ${aba === "financeiro" ? "on" : ""}`} onClick={() => setAba("financeiro")}>Financeiro</button>
               )}
@@ -567,6 +709,8 @@ function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: Proj
                 </button>
               </div>
             </>
+          ) : aba === "abertura" ? (
+            <AbaAbertura p={p} autor={autor} />
           ) : aba === "gestao" ? (
             <>
               <div className="kb-det-info">
@@ -622,6 +766,198 @@ function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: Proj
           ) : (
             <Financeiro projetoId={p.id} onSalvo={onSalvo} />
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ————————————————————————————————————————————————————————————
+// Aba de abertura: o checklist do executivo de contas
+// ————————————————————————————————————————————————————————————
+function AbaAbertura({ p, autor }: { p: ProjetoDB; autor: string }) {
+  const [itens, setItens] = useState<Record<string, ItemAbertura>>(() => {
+    const r: Record<string, ItemAbertura> = {};
+    p.abertura.forEach((i) => { r[i.chave] = i; });
+    return r;
+  });
+  const [salvando, setSalvando] = useState<string | null>(null);
+
+  function vazio(chave: string): ItemAbertura {
+    return { chave, feito: false, valor: null, confirmado: false, autor: null, feito_em: null };
+  }
+
+  async function salvar(chave: string, mudanca: Partial<ItemAbertura>) {
+    const novo = { ...(itens[chave] || vazio(chave)), ...mudanca };
+    setItens((prev) => ({ ...prev, [chave]: novo }));
+    setSalvando(chave);
+    await fetch("/api/projetos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        acao: "abertura_set",
+        projeto_id: p.id,
+        chave,
+        feito: novo.feito,
+        valor: novo.valor,
+        confirmado: novo.confirmado,
+        autor,
+      }),
+    });
+    setSalvando(null);
+  }
+
+  const simulado: ProjetoDB = { ...p, abertura: Object.values(itens) };
+  const st = statusAbertura(simulado);
+
+  return (
+    <div className="ab">
+      <div className={`ab-barra ${st.completa ? "ok" : ""}`}>
+        <div className="ab-barra-txt">
+          {st.completa
+            ? "Abertura concluída. O projeto já pode avançar de fase."
+            : `Abertura ${st.feitos} de ${st.total}. Enquanto não estiver completa, o projeto não avança de fase.`}
+        </div>
+        <div className="ab-barra-trilho">
+          <div className="ab-barra-cheio" style={{ width: `${(st.feitos / st.total) * 100}%` }} />
+        </div>
+      </div>
+
+      {p.aberturaLiberada && p.aberturaJustificativa && (
+        <div className="ab-liberado">
+          <strong>Avanço liberado sem a abertura completa.</strong> {p.aberturaJustificativa}
+        </div>
+      )}
+
+      <div className="ab-lista">
+        {ABERTURA.map((def) => {
+          const it = itens[def.chave] || vazio(def.chave);
+          const auto = !!def.auto;
+          const feito = itemCumprido(def, it, p);
+          return (
+            <div className={`ab-item ${feito ? "feito" : ""} ${auto ? "auto" : ""}`} key={def.chave}>
+              <button
+                type="button"
+                className={`ab-check ${feito ? "on" : ""}`}
+                disabled={auto}
+                aria-label={def.titulo}
+                onClick={() => salvar(def.chave, { feito: !it.feito })}
+              >
+                {feito ? "✓" : ""}
+              </button>
+
+              <div className="ab-corpo">
+                <div className="ab-titulo">{def.titulo}</div>
+
+                {def.auto === "cronograma" && (
+                  <div className="ab-nota">{NOTA_MODALIDADE[p.tipo]}</div>
+                )}
+                {def.ajuda && <div className="ab-ajuda">{def.ajuda}</div>}
+
+                {def.campo && (
+                  <label className="ab-campo">
+                    <span>{def.rotulo}</span>
+                    <input
+                      type={def.campo === "data" ? "date" : def.campo === "datahora" ? "datetime-local" : "text"}
+                      value={it.valor || ""}
+                      placeholder={def.campo === "texto" ? "Cole aqui" : undefined}
+                      onChange={(e) => salvar(def.chave, { valor: e.target.value })}
+                    />
+                  </label>
+                )}
+
+                {def.confirmacao && (
+                  <label className="ab-confirma">
+                    <input
+                      type="checkbox"
+                      checked={!!it.confirmado}
+                      onChange={() => salvar(def.chave, { confirmado: !it.confirmado })}
+                    />
+                    <span>{def.confirmacao}</span>
+                  </label>
+                )}
+
+                {!auto && it.feito && it.autor && (
+                  <div className="ab-assinatura">
+                    marcado por {it.autor}{it.feito_em ? ` em ${dataHora(it.feito_em)}` : ""}
+                  </div>
+                )}
+                {salvando === def.chave && <div className="ab-assinatura">salvando…</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ————————————————————————————————————————————————————————————
+// Aviso de trava: aparece ao tentar avançar com a abertura incompleta
+// ————————————————————————————————————————————————————————————
+function ModalTrava({ p, autor, onFechar, onAbrirProjeto, onLiberado }: {
+  p: ProjetoDB; autor: string; onFechar: () => void;
+  onAbrirProjeto: () => void; onLiberado: () => void;
+}) {
+  const st = statusAbertura(p);
+  const [motivo, setMotivo] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function liberar() {
+    if (motivo.trim().length < 10) {
+      setErro("Escreva o motivo com pelo menos uma frase.");
+      return;
+    }
+    setErro(null);
+    setSalvando(true);
+    const res = await fetch("/api/projetos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "abertura_liberar", id: p.id, justificativa: motivo, autor }),
+    });
+    setSalvando(false);
+    if (res.ok) onLiberado();
+    else setErro("Não foi possível liberar. Tente de novo.");
+  }
+
+  return (
+    <div className="kb-overlay" onClick={onFechar}>
+      <div className="kb-modal estreito" onClick={(e) => e.stopPropagation()}>
+        <div className="kb-modal-head">
+          <h2>Abertura incompleta</h2>
+          <button className="kb-modal-x" onClick={onFechar}>×</button>
+        </div>
+        <div className="kb-modal-body">
+          <p className="ab-trava-lead">
+            <strong>{p.nome}</strong> ainda tem {st.pendentes.length}{" "}
+            {st.pendentes.length === 1 ? "item pendente" : "itens pendentes"} no checklist de
+            abertura. O caminho normal é concluir a abertura antes de avançar de fase.
+          </p>
+          <ul className="ab-pendentes">
+            {st.pendentes.map((t, i) => <li key={i}>{t}</li>)}
+          </ul>
+
+          <button className="kb-btn-primary" style={{ width: "100%" }} onClick={onAbrirProjeto}>
+            Concluir a abertura agora
+          </button>
+
+          <div className="ab-excecao">
+            <div className="kb-det-fases-titulo" style={{ marginTop: 0 }}>Se for mesmo uma exceção</div>
+            <p className="kb-dica" style={{ marginTop: 0 }}>
+              Escreva o motivo. Ele fica registrado no projeto e entra no histórico, visível para o gestor.
+            </p>
+            <textarea
+              className="kb-textarea"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ex.: cliente antecipou a reunião para hoje, o formulário será enviado ainda esta tarde."
+            />
+            {erro && <p className="kb-erro">{erro}</p>}
+            <button className="kb-btn-ghost" style={{ marginTop: 10 }} onClick={liberar} disabled={salvando}>
+              {salvando ? "Liberando…" : "Avançar mesmo assim"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

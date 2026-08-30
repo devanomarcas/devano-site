@@ -144,6 +144,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ---- Checklist de abertura: marcar/desmarcar um item ----
+    if (acao === "abertura_set") {
+      const { projeto_id, chave, feito, valor, confirmado, autor } = corpo;
+      if (!projeto_id || !chave) {
+        return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
+      }
+      const { error } = await admin
+        .from("abertura_itens")
+        .upsert(
+          {
+            projeto_id,
+            chave,
+            feito: !!feito,
+            valor: valor ?? null,
+            confirmado: !!confirmado,
+            autor: feito ? autor || null : null,
+            feito_em: feito ? new Date().toISOString() : null,
+          },
+          { onConflict: "projeto_id,chave" }
+        );
+      if (error) throw error;
+      revalidatePath("/admin/projetos");
+      return NextResponse.json({ ok: true });
+    }
+
+    // ---- Liberar o avanço mesmo com a abertura incompleta ----
+    // Exige motivo escrito. O motivo fica no projeto e vira uma entrada
+    // no histórico, para o gestor enxergar sem precisar procurar.
+    if (acao === "abertura_liberar") {
+      const { id, justificativa, autor } = corpo;
+      if (!id || !justificativa?.trim()) {
+        return NextResponse.json({ error: "Escreva o motivo." }, { status: 400 });
+      }
+      const motivo = justificativa.trim();
+      const { error } = await admin
+        .from("projetos")
+        .update({
+          abertura_justificativa: motivo,
+          abertura_liberada_em: new Date().toISOString(),
+          abertura_liberada_por: autor || null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+      await admin.from("observacoes").insert({
+        projeto_id: id,
+        texto: `Avanço liberado com a abertura incompleta. Motivo: ${motivo}`,
+        autor: autor || null,
+      });
+      revalidatePath("/admin/projetos");
+      return NextResponse.json({ ok: true });
+    }
+
     // ---- Apagar projeto ----
     if (acao === "apagar") {
       const { id } = corpo;
