@@ -47,9 +47,7 @@ export default async function Home() {
             Estruturamos negócios <span className="ital">a partir das marcas.</span>
           </h1>
           <p className="sub g-rise" style={{ transitionDelay: ".2s" }}>
-            Desenvolvemos estratégias de marca, marketing, design e comunicação para
-            tornar a sua marca um ativo capaz de gerar valor para o cliente e para o
-            negócio, e mais competitivo no mercado.
+            Estratégia, marketing e design para transformar a sua marca em um ativo.
           </p>
           <div className="actions g-rise" style={{ transitionDelay: ".3s" }}>
             <Link href="/#contato" className="btn btn-primary">Iniciar uma conversa</Link>
@@ -59,29 +57,26 @@ export default async function Home() {
         <div className="scrollcue">Role para descobrir</div>
       </header>
 
-      {/* SOMOS — palavra-display monumental */}
+      {/* SOMOS — palavra-display monumental (campo claro) */}
       <section id="somos" className="somos on-light">
         <div className="wrap">
           <p className="micro g-reveal">Quem somos</p>
           <p className="big g-reveal d1">
-            Somos um escritório especializado em <strong>branding</strong>.{" "}
-            <span className="muted">Desenvolvemos estratégias de marca, marketing, design e
-            comunicação para tornar a sua marca um ativo capaz de proporcionar valor para o
-            cliente e para o negócio, tornando-o ainda mais competitivo.</span>
+            Um escritório de <strong>branding</strong>.{" "}
+            <span className="muted">Construímos marcas que viram ativo do negócio.</span>
           </p>
         </div>
       </section>
 
-      {/* MÉTODO — obra (pintura) + triangulação */}
-      <section id="metodo" className="on-light">
+      {/* MÉTODO — campo ESCURO (verde) com obra + triangulação */}
+      <section id="metodo" className="field-dark">
         <div className="wrap">
           <div className="metodo-grid">
             <div>
               <p className="micro g-reveal">Como pensamos</p>
-              <h2 className="g-reveal d1">Toda marca nasce do encontro de três visões.</h2>
+              <h2 className="g-reveal d1">Toda marca nasce de três visões.</h2>
               <p className="lead g-reveal d2">
-                Estratégia, mercado e repertório. Nenhuma marca se sustenta em uma só
-                perspectiva. Nosso trabalho começa onde as três se encontram.
+                Estratégia, mercado e repertório. Começamos onde as três se encontram.
               </p>
             </div>
             <div className="metodo-foto g-frame">
@@ -184,13 +179,13 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* AVALIAÇÕES */}
-      <section id="avaliacoes" className="on-light">
+      {/* AVALIAÇÕES — campo ESCURO (verde) */}
+      <section id="avaliacoes" className="field-dark">
         <div className="wrap">
           <div className="reviews-head">
             <div>
-              <p className="micro g-reveal">O que dizem nossos clientes</p>
-              <h2 className="g-reveal d1">Confiança que se constrói projeto a projeto.</h2>
+              <p className="micro g-reveal">O que dizem os clientes</p>
+              <h2 className="g-reveal d1">Confiança, projeto a projeto.</h2>
               <div className="reviews-rating g-reveal d2">
                 <span className="stars">★★★★★</span>
                 <span className="score"><strong>5,0</strong> no Google</span>
@@ -249,14 +244,13 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* BLOG */}
-      <section id="blog" className="on-light">
+      {/* BLOG — campo ESCURO (verde) */}
+      <section id="blog" className="field-dark">
         <div className="wrap">
           <p className="micro g-reveal">Repertório</p>
           <h2 className="g-reveal d1">O pensamento por trás do método.</h2>
           <p className="lead g-reveal d2">
-            Toda semana, uma reflexão sobre marca, estratégia, marketing e a construção de
-            negócios.
+            Toda semana, uma reflexão sobre marca e negócio.
           </p>
           <div className="posts">
             {posts.map((post, i) => (
@@ -279,10 +273,9 @@ export default async function Home() {
       {/* CTA — campo rifle */}
       <section id="contato" className="final">
         <div className="wrap">
-          <h2 className="g-reveal">Sua marca sustenta a ambição do seu negócio?</h2>
+          <h2 className="g-reveal">Sua marca sustenta a ambição do negócio?</h2>
           <p className="lead g-reveal d1">
-            Se essa pergunta é difícil de responder, é um bom ponto de partida para
-            conversarmos.
+            Se é difícil responder, já é um bom ponto de partida.
           </p>
           <a className="btn btn-primary g-reveal d2" href="https://wa.me/5584999951006?text=Ol%C3%A1%2C%20vim%20atrav%C3%A9s%20da%20landing%20page%20da%20Devano%2C%20gostaria%20de%20saber%20mais%20sobre%20suas%20solu%C3%A7%C3%B5es." target="_blank" rel="noopener">
             Iniciar uma conversa

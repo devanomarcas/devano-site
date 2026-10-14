@@ -19,6 +19,7 @@ export type ProjetoDB = {
   cliente: string | null;
   tipo: "branding" | "visual" | "excepcional";
   fase_atual: number;
+  finalizado: boolean;
   observacao: string | null;
   fases: FaseDB[];
   participantes: string[];
@@ -82,9 +83,13 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
     return filtro === "todos" || p.tipo === filtro;
   });
 
+  // Em andamento (nas colunas de fase) e finalizados (na coluna final) separados
+  const emAndamento = visiveis.filter((p) => !p.finalizado);
+  const finalizados = visiveis.filter((p) => p.finalizado);
+
   let colunas: string[];
   if (filtroPessoa || filtro === "todos") {
-    const maxF = Math.max(7, ...visiveis.map((p) => p.fases.length || 0));
+    const maxF = Math.max(7, ...emAndamento.map((p) => p.fases.length || 0));
     colunas = Array.from({ length: maxF }, (_, i) => `Etapa ${i + 1}`);
   } else {
     colunas = FASES_PADRAO[filtro];
@@ -97,6 +102,15 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ acao: "mover", id: p.id, novaFase: nova }),
+    });
+    router.refresh();
+  }
+
+  async function finalizar(p: ProjetoDB, finalizado: boolean) {
+    await fetch("/api/projetos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "finalizar", id: p.id, finalizado }),
     });
     router.refresh();
   }
@@ -136,7 +150,7 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
       ) : (
         <div className="kb-board">
           {colunas.map((nomeCol, idx) => {
-            const naColuna = visiveis.filter((p) => p.fase_atual === idx);
+            const naColuna = emAndamento.filter((p) => p.fase_atual === idx);
             return (
               <div className="kb-coluna" key={idx}>
                 <div className="kb-coluna-head">
@@ -145,7 +159,7 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
                 </div>
                 {naColuna.length ? (
                   naColuna.map((p) => (
-                    <Cartao key={p.id} p={p} onAbrir={() => setDetalhe(p)} onMover={mover} />
+                    <Cartao key={p.id} p={p} onAbrir={() => setDetalhe(p)} onMover={mover} onFinalizar={finalizar} />
                   ))
                 ) : (
                   <div className="kb-vazia">—</div>
@@ -153,6 +167,21 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
               </div>
             );
           })}
+
+          {/* Coluna fixa: Projetos finalizados */}
+          <div className="kb-coluna kb-coluna-final">
+            <div className="kb-coluna-head">
+              <span className="kb-coluna-nome">✓ Finalizados</span>
+              <span className="kb-coluna-num">{finalizados.length}</span>
+            </div>
+            {finalizados.length ? (
+              finalizados.map((p) => (
+                <Cartao key={p.id} p={p} onAbrir={() => setDetalhe(p)} onMover={mover} onFinalizar={finalizar} />
+              ))
+            ) : (
+              <div className="kb-vazia">—</div>
+            )}
+          </div>
         </div>
       )}
 
@@ -162,21 +191,21 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
   );
 }
 
-function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; onMover: (p: ProjetoDB, dir: number) => void }) {
+function Cartao({ p, onAbrir, onMover, onFinalizar }: { p: ProjetoDB; onAbrir: () => void; onMover: (p: ProjetoDB, dir: number) => void; onFinalizar: (p: ProjetoDB, finalizado: boolean) => void }) {
   const faseAtual = p.fases.find((f) => f.ordem === p.fase_atual);
   const periodo = faseAtual ? `${dCurto(faseAtual.inicio)} – ${dCurto(faseAtual.fim)}` : "—";
   const podeVoltar = p.fase_atual > 0;
-  const podeAvancar = p.fase_atual < p.fases.length - 1;
+  const naUltimaFase = p.fase_atual >= p.fases.length - 1;
   const nUpdates = p.observacoes.length;
   const ultima = nUpdates > 0 ? p.observacoes[0] : null; // já vem ordenado desc
   return (
-    <div className={`kb-card ${p.tipo}`} onClick={onAbrir}>
+    <div className={`kb-card ${p.tipo} ${p.finalizado ? "finalizado" : ""}`} onClick={onAbrir}>
       <div className="kb-card-tipo">{TIPO_LABEL[p.tipo]}</div>
       <div className="kb-card-nome">{p.nome}</div>
-      {faseAtual && <div className="kb-card-fase">{faseAtual.nome}</div>}
+      {!p.finalizado && faseAtual && <div className="kb-card-fase">{faseAtual.nome}</div>}
       <div className="kb-card-meta">
         <span className="kb-card-cliente">{p.cliente || "—"}</span>
-        <span className="kb-card-periodo">📅 {periodo}</span>
+        {!p.finalizado && <span className="kb-card-periodo">📅 {periodo}</span>}
       </div>
       {ultima && (
         <div className="kb-card-obs">
@@ -192,8 +221,19 @@ function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; on
         </div>
       )}
       <div className="kb-card-mover" onClick={(e) => e.stopPropagation()}>
-        <button onClick={() => onMover(p, -1)} disabled={!podeVoltar}>←</button>
-        <button onClick={() => onMover(p, 1)} disabled={!podeAvancar}>Avançar →</button>
+        {p.finalizado ? (
+          <button className="kb-reabrir" onClick={() => onFinalizar(p, false)}>↩ Reabrir</button>
+        ) : naUltimaFase ? (
+          <>
+            <button onClick={() => onMover(p, -1)} disabled={!podeVoltar}>←</button>
+            <button className="kb-finalizar" onClick={() => onFinalizar(p, true)}>✓ Finalizar</button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => onMover(p, -1)} disabled={!podeVoltar}>←</button>
+            <button onClick={() => onMover(p, 1)}>Avançar →</button>
+          </>
+        )}
       </div>
     </div>
   );

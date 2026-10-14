@@ -261,3 +261,63 @@ section.tight{padding:11vh 0;}
 .popup-dispensar:hover { color: var(--cinza); }
 .popup { padding: 40px 28px 32px; }
 .popup h3 { font-size: 22px; }
+/* ============================================================
+   REFINAMENTO DE DEMARCAÇÃO DE SEÇÕES (padrão Apple, identidade Devano)
+   Alternância de campos de cor + ritmo mais apertado + transições nítidas
+   ============================================================ */
+
+/* Ritmo: menos vazio, mais cadência. Cada seção é um campo fechado. */
+section{padding:13vh 0;}
+.hero{padding:16vh var(--margin) 13vh;}
+
+/* Campo claro explícito (antes era implícito pelo body) */
+.on-light{background:var(--seashell);color:var(--body);}
+.somos{background:var(--seashell);}
+
+/* Dois tons de campo escuro para as seções não ficarem idênticas.
+   metodo e blog em rifle (mais escuro); avaliacoes em ebony (verde médio). */
+.field-dark{background:var(--rifle);color:var(--on-dark);position:relative;}
+#avaliacoes.field-dark{background:var(--ebony);}
+.editorial-block{background:var(--rifle);}
+
+/* Linha de corte sutil no topo de cada campo escuro: demarca a fronteira
+   sem ser um "fio" solto — é a borda entre dois campos, no espírito Apple. */
+.field-dark::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:rgba(250,244,236,0.12);
+}
+
+/* SOMOS: vira uma faixa-manifesto curta e centrada no respiro, não um vazio */
+.somos{padding:16vh 0;}
+.somos .big{margin-top:0;font-size:clamp(32px,4.5vw,68px);max-width:24ch;}
+
+/* MÉTODO escuro: a pintura e os textos legíveis no verde */
+#metodo.field-dark .tri .tn{color:var(--papaya);}
+#metodo.field-dark .tri h3{color:var(--on-dark);}
+#metodo.field-dark .tri p{color:rgba(250,244,236,0.78);}
+#metodo.field-dark .lead{color:rgba(250,244,236,0.85);}
+
+/* AVALIAÇÕES no escuro: cards de vidro claro sobre o verde, texto creme */
+#avaliacoes.field-dark .review{background:rgba(250,244,236,0.07);border:1px solid rgba(250,244,236,0.12);}
+#avaliacoes.field-dark .review p{color:rgba(250,244,236,0.9);}
+#avaliacoes.field-dark .review .nome{color:var(--seashell);}
+#avaliacoes.field-dark .review .meta{color:rgba(250,244,236,0.6);}
+#avaliacoes.field-dark .review .avatar{background:var(--papaya);color:var(--rifle);}
+#avaliacoes.field-dark .reviews-rating .score{color:rgba(250,244,236,0.85);}
+#avaliacoes.field-dark .reviews-rating .score strong{color:var(--seashell);}
+#avaliacoes.field-dark .review .stars,#avaliacoes.field-dark .reviews-rating .stars{color:var(--papaya);}
+#avaliacoes.field-dark .google-link{color:var(--papaya);}
+
+/* BLOG no escuro: os cartões de post legíveis */
+#blog.field-dark .post .thumb{background:rgba(250,244,236,0.08);border:1px solid rgba(250,244,236,0.12);}
+#blog.field-dark .post h3{color:var(--on-dark);}
+#blog.field-dark .post .date{color:rgba(250,244,236,0.6);}
+#blog.field-dark .post .read{color:var(--papaya);}
+#blog.field-dark .lead{color:rgba(250,244,236,0.85);}
+
+/* NEWSLETTER (classe .alt) vira campo claro definido, entre dois escuros */
+.alt{background:var(--seashell);}
+
+/* Botão claro sobre campo escuro */
+.field-dark .btn-primary{background:var(--seashell);color:var(--rifle);border-color:var(--seashell);}
+.field-dark .btn-primary:hover{background:transparent;color:var(--seashell);}

@@ -72,6 +72,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ---- Finalizar ou reabrir projeto ----
+    if (acao === "finalizar") {
+      const { id, finalizado } = corpo;
+      const { error } = await admin
+        .from("projetos")
+        .update({
+          finalizado: !!finalizado,
+          finalizado_em: finalizado ? new Date().toISOString() : null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+      revalidatePath("/admin/projetos");
+      return NextResponse.json({ ok: true });
+    }
+
     // ---- Salvar observação ----
     if (acao === "observacao") {
       const { id, observacao } = corpo;

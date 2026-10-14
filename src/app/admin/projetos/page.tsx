@@ -60,6 +60,7 @@ export default async function ProjetosPage() {
     cliente: p.cliente,
     tipo: p.tipo,
     fase_atual: p.fase_atual ?? 0,
+    finalizado: p.finalizado ?? false,
     observacao: p.observacao,
     fases: fases.filter((f) => f.projeto_id === p.id),
     participantes: parts

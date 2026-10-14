@@ -591,3 +591,13 @@ select.editor-input { cursor: pointer; }
 .kb-obs-apagar:hover{color:#A3654A;text-decoration:underline;}
 .kb-obs-texto{font-size:13px;color:#1A1C19;line-height:1.5;}
 .kb-obs-autor{font-size:10px;color:#9A9A92;margin-top:6px;}
+
+/* ===== COLUNA FINALIZADOS ===== */
+.kb-coluna-final{background:#EDF0E9;border-color:#C9D2BE;}
+.kb-coluna-final .kb-coluna-nome{color:#606D50;}
+.kb-card.finalizado{border-left-color:#606D50;opacity:0.85;}
+.kb-card.finalizado .kb-card-nome{color:#606D50;}
+.kb-finalizar{flex:1;font-family:inherit;font-size:11px;border:1px solid #606D50!important;background:#606D50!important;color:#fff!important;border-radius:3px;padding:5px;cursor:pointer;}
+.kb-finalizar:hover{background:#444D42!important;border-color:#444D42!important;}
+.kb-reabrir{flex:1;font-family:inherit;font-size:11px;border:1px solid #E3E0D8;background:#fff;border-radius:3px;padding:5px;cursor:pointer;color:#6E726B;}
+.kb-reabrir:hover{border-color:#606D50;color:#606D50;}
