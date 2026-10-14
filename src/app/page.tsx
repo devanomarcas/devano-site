@@ -38,13 +38,14 @@ export default async function Home() {
       <Nav />
       <Reveal />
 
-      {/* HERO — campo rifle, virada de galeria */}
+      {/* HERO — campo rifle com obra ao fundo, virada de galeria */}
       <header className="hero">
-        <Image className="spiral-bg parallax" data-speed="0.06" src="/brand/espiral.png" alt="" width={620} height={950} aria-hidden priority />
+        <div className="hero-art parallax" data-speed="0.05" aria-hidden />
+        <div className="hero-scrim" aria-hidden />
         <div className="wrap">
           <p className="micro g-rise">Escritório de branding · Natal/RN</p>
           <h1 className="g-rise" style={{ transitionDelay: ".1s" }}>
-            Estruturamos negócios <span className="ital">a partir das marcas.</span>
+            Estruturamos negócios <span className="emph">a partir das marcas.</span>
           </h1>
           <p className="sub g-rise" style={{ transitionDelay: ".2s" }}>
             Estratégia, marketing e design para transformar a sua marca em um ativo.

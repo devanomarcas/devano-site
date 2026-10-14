@@ -15,9 +15,9 @@ export default function Nav() {
   }, []);
 
   return (
-    <nav className={scrolled ? "scrolled" : ""}>
-      <Link href="/" aria-label="Devano — início">
-        <Image className="sym" src="/brand/espiral.png" alt="Devano" width={30} height={46} priority />
+    <nav className={`solid${scrolled ? " scrolled" : ""}`}>
+      <Link href="/" aria-label="Devano · início" className="navlogo">
+        <Image className="logo-h" src="/brand/logo-branco.png" alt="Devano" width={150} height={32} priority />
       </Link>
       <div className="navlinks">
         <Link href="/#somos">Quem somos</Link>

@@ -36,7 +36,7 @@ export default function Newsletter() {
             <h2>A newsletter de Lucas Mooneyhan.</h2>
             <p className="lead">
               Reflexões e análises sobre negócios, marcas, marketing e
-              comportamento — de forma livre, todo domingo às 9h. Assinada por
+              comportamento. De forma livre, todo domingo às 9h. Assinada por
               Lucas Mooneyhan.
             </p>
           </div>

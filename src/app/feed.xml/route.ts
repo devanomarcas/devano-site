@@ -42,7 +42,7 @@ export async function GET() {
   xmlns:dc="http://purl.org/dc/elements/1.1/"
   xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Marketeiros — por Lucas Mooneyhan</title>
+    <title>Marketeiros · por Lucas Mooneyhan</title>
     <link>${SITE}/blog</link>
     <atom:link href="${SITE}/feed.xml" rel="self" type="application/rss+xml" />
     <description>Reflexões e análises sobre negócios, marcas, marketing e comportamento. Por Lucas Mooneyhan, todo domingo às 9h.</description>

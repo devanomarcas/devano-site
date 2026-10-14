@@ -64,7 +64,7 @@ export function montarEmail({
             <td style="padding:8px 40px 0 40px;">
               <img src="${LOGO}" alt="Devano" width="120" style="display:block;width:120px;height:auto;border:0;">
               <p style="margin:14px 0 0 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#9a9a92;">
-                Marketeiros — por Lucas Mooneyhan
+                Marketeiros · por Lucas Mooneyhan
               </p>
             </td>
           </tr>

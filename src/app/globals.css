@@ -43,24 +43,33 @@ p{font-size:var(--body-sz);line-height:1.6;color:var(--body);max-width:62ch;}
 .vmicro{writing-mode:vertical-rl;transform:rotate(180deg);font-size:var(--micro);letter-spacing:0.3em;text-transform:uppercase;color:var(--ebony);font-weight:400;white-space:nowrap;}
 
 nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:18px var(--margin);display:flex;align-items:center;justify-content:space-between;transition:padding .4s var(--ease),background .4s var(--ease);}
-nav.scrolled{padding:12px var(--margin);background:var(--glass-fill);backdrop-filter:blur(var(--glass-blur)) saturate(1.1);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.1);border-bottom:1px solid rgba(255,255,255,0.4);}
-nav .sym{width:30px;height:auto;display:block;transition:transform .6s var(--ease);}
-nav.scrolled .sym{transform:rotate(90deg);}
+/* Barra sempre visível: campo rifle translúcido que lê tanto sobre o hero
+   escuro quanto sobre as seções claras. Logotipo horizontal branco. */
+nav.solid{background:rgba(58,66,56,0.82);backdrop-filter:blur(var(--glass-blur)) saturate(1.1);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.1);border-bottom:1px solid rgba(250,244,236,0.12);}
+nav.solid.scrolled{padding:12px var(--margin);background:rgba(58,66,56,0.92);}
+nav .navlogo{display:flex;align-items:center;}
+nav .logo-h{width:auto;height:30px;display:block;}
 .navlinks{display:flex;align-items:center;gap:30px;}
-.navlinks a{color:var(--rifle);text-decoration:none;font-size:14px;font-weight:400;letter-spacing:0.01em;transition:opacity .3s;opacity:0.75;}
-.navlinks a:hover{opacity:1;}
-.navcta{border:1px solid var(--telha)!important;color:var(--telha)!important;padding:9px 20px;border-radius:100px;opacity:1!important;transition:background .3s,color .3s;}
-.navcta:hover{background:var(--telha);color:var(--seashell)!important;}
+.navlinks a{color:rgba(250,244,236,0.82);text-decoration:none;font-size:14px;font-weight:400;letter-spacing:0.01em;transition:opacity .3s,color .3s;}
+.navlinks a:hover{color:var(--seashell);}
+.navcta{border:1px solid rgba(250,244,236,0.55)!important;color:var(--seashell)!important;padding:9px 20px;border-radius:100px;opacity:1!important;transition:background .3s,color .3s,border-color .3s;}
+.navcta:hover{background:var(--seashell);color:var(--rifle)!important;border-color:var(--seashell)!important;}
 .navtoggle{display:none;}
 
 .hero{min-height:100svh;background:var(--rifle);color:var(--on-dark);display:flex;flex-direction:column;justify-content:center;padding:16vh var(--margin) 12vh;position:relative;overflow:hidden;}
 .hero .wrap{padding:0;}
 .hero .micro{color:rgba(250,244,236,0.7);}
 .hero h1{color:var(--on-dark);max-width:16ch;margin:26px 0 0;font-weight:200;letter-spacing:-0.035em;}
-.hero h1 .ital{font-style:italic;font-weight:300;}
+.hero h1 .emph{display:block;font-weight:300;color:rgba(250,244,236,0.92);}
 .hero .sub{color:rgba(250,244,236,0.82);max-width:44ch;margin-top:34px;font-size:var(--lead);font-weight:300;line-height:1.45;}
 .hero .actions{display:flex;gap:16px;margin-top:44px;flex-wrap:wrap;}
-.hero .spiral-bg{position:absolute;right:-6vw;top:50%;transform:translateY(-50%);width:min(46vw,620px);height:auto;opacity:0.09;filter:brightness(0) invert(1);pointer-events:none;}
+/* Obra artística ao fundo do hero (lado direito), com véu para legibilidade */
+.hero .hero-art{position:absolute;top:-8%;bottom:-8%;right:0;height:116%;width:min(52vw,760px);background:url(/pinturas/obra-editorial.jpg) center right/cover no-repeat;pointer-events:none;z-index:0;}
+.hero .hero-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,var(--rifle) 0%,var(--rifle) 32%,rgba(68,77,66,0.72) 52%,rgba(68,77,66,0.40) 100%),
+             linear-gradient(0deg,rgba(68,77,66,0.55) 0%,rgba(68,77,66,0) 38%);}
+.hero .wrap{position:relative;z-index:2;}
+.hero .scrollcue{z-index:2;}
 .hero .scrollcue{position:absolute;bottom:34px;left:var(--margin);color:rgba(250,244,236,0.6);font-size:var(--micro);letter-spacing:0.28em;text-transform:uppercase;display:flex;align-items:center;gap:12px;}
 .hero .scrollcue::before{content:"";width:40px;height:1px;background:rgba(250,244,236,0.5);display:inline-block;animation:cue 2.4s var(--ease) infinite;}
 @keyframes cue{0%,100%{transform:scaleX(1);opacity:.5;}50%{transform:scaleX(1.6);opacity:1;}}
@@ -277,7 +286,7 @@ section{padding:13vh 0;}
 /* Dois tons de campo escuro para as seções não ficarem idênticas.
    metodo e blog em rifle (mais escuro); avaliacoes em ebony (verde médio). */
 .field-dark{background:var(--rifle);color:var(--on-dark);position:relative;}
-#avaliacoes.field-dark{background:var(--ebony);}
+#avaliacoes.field-dark{background:var(--rifle);}
 .editorial-block{background:var(--rifle);}
 
 /* Linha de corte sutil no topo de cada campo escuro: demarca a fronteira
@@ -321,3 +330,21 @@ section{padding:13vh 0;}
 /* Botão claro sobre campo escuro */
 .field-dark .btn-primary{background:var(--seashell);color:var(--rifle);border-color:var(--seashell);}
 .field-dark .btn-primary:hover{background:transparent;color:var(--seashell);}
+
+/* ===== RODAPÉ ===== campo rifle escuro, bem diagramado, fecha a página ===== */
+footer{background:var(--rifle);color:var(--on-dark);padding:9vh 0 5vh;position:relative;}
+footer::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:rgba(250,244,236,0.12);}
+footer .top{display:grid;grid-template-columns:1.2fr 1fr;gap:64px;align-items:start;}
+footer .logo{width:168px;height:auto;filter:brightness(0) invert(1);opacity:0.95;}
+footer .tag{margin-top:20px;max-width:34ch;color:rgba(250,244,236,0.72);font-size:var(--body-sz);line-height:1.6;font-weight:300;}
+footer .cols{display:grid;grid-template-columns:1fr 1fr;gap:48px;}
+footer .cols h5{margin:0 0 18px;font-size:var(--micro);letter-spacing:0.22em;text-transform:uppercase;color:rgba(250,244,236,0.55);font-weight:500;}
+footer .cols a{display:block;color:rgba(250,244,236,0.85);text-decoration:none;font-size:16px;line-height:1.9;transition:color .3s;width:fit-content;}
+footer .cols a:hover{color:var(--papaya);}
+footer .copy{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:8vh;padding-top:28px;border-top:1px solid rgba(250,244,236,0.12);font-size:13px;letter-spacing:0.02em;color:rgba(250,244,236,0.5);}
+@media(max-width:760px){
+  footer{padding:7vh 0 5vh;}
+  footer .top{grid-template-columns:1fr;gap:44px;}
+  footer .cols{gap:36px;}
+  footer .copy{flex-direction:column;align-items:flex-start;gap:8px;margin-top:6vh;}
+}

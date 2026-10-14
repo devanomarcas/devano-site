@@ -9,8 +9,8 @@ const DESC =
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.devanobranding.com"),
   title: {
-    default: "Devano — Escritório de Branding | Estratégia, Marketing e Design",
-    template: "%s — Devano",
+    default: "Devano · Escritório de Branding | Estratégia, Marketing e Design",
+    template: "%s · Devano",
   },
   description: DESC,
   keywords: [
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   publisher: "Devano",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Devano — Escritório de Branding",
+    title: "Devano · Escritório de Branding",
     description: DESC,
     url: "https://www.devanobranding.com",
     siteName: "Devano",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Devano — Escritório de Branding",
+    title: "Devano · Escritório de Branding",
     description: DESC,
   },
   robots: {
