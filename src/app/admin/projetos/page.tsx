@@ -47,10 +47,6 @@ export default async function ProjetosPage() {
     .select("projeto_id, perfil_id");
   const parts = partsRaw ?? [];
 
-  // itens do checklist de abertura, por projeto
-  const { data: aberturaRaw } = await admin.from("abertura_itens").select("*");
-  const abertura = aberturaRaw ?? [];
-
   // observações (histórico) por projeto
   const { data: obsRaw } = await admin
     .from("observacoes")
@@ -76,18 +72,6 @@ export default async function ProjetosPage() {
     observacoes: obs
       .filter((o) => o.projeto_id === p.id)
       .map((o) => ({ id: o.id, texto: o.texto, autor: o.autor, criado_em: o.criado_em })),
-    abertura: abertura
-      .filter((a) => a.projeto_id === p.id)
-      .map((a) => ({
-        chave: a.chave,
-        feito: !!a.feito,
-        valor: a.valor,
-        confirmado: !!a.confirmado,
-        autor: a.autor,
-        feito_em: a.feito_em,
-      })),
-    aberturaLiberada: !!p.abertura_liberada_em,
-    aberturaJustificativa: p.abertura_justificativa ?? null,
   }));
 
   return (

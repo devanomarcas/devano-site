@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Financeiro from "@/components/admin/Financeiro";
 
@@ -24,18 +24,6 @@ export type ProjetoDB = {
   participantes: string[];
   participantesIds: string[];
   observacoes: ObsDB[];
-  abertura: ItemAbertura[];
-  aberturaLiberada: boolean;
-  aberturaJustificativa: string | null;
-};
-
-export type ItemAbertura = {
-  chave: string;
-  feito: boolean;
-  valor: string | null;
-  confirmado: boolean;
-  autor: string | null;
-  feito_em: string | null;
 };
 
 export type ObsDB = {
@@ -65,84 +53,6 @@ const FASES_PADRAO: Record<string, string[]> = {
   excepcional: ["Definição do escopo", "Em execução", "Revisão", "Entrega"],
 };
 
-// largura de uma coluna + o espaço entre elas, usado pelas setas de rolagem
-const PASSO_COLUNA = 264;
-
-// ————————————————————————————————————————————————————————————
-// Checklist de abertura de projeto (executivo de contas)
-//
-// Os dois primeiros itens não são clicáveis: eles já foram cumpridos
-// pelo próprio ato de cadastrar o projeto. O de cronograma marca sozinho
-// quando todas as fases tiverem início e fim preenchidos.
-// ————————————————————————————————————————————————————————————
-type DefAbertura = {
-  chave: string;
-  titulo: string;
-  ajuda?: string;
-  campo?: "texto" | "data" | "datahora";
-  rotulo?: string;
-  confirmacao?: string;
-};
-
-const ABERTURA: DefAbertura[] = [
-  {
-    chave: "grupo",
-    titulo: "Grupo criado com o time",
-    campo: "texto",
-    rotulo: "Link ou nome do grupo",
-  },
-  {
-    chave: "aviso",
-    titulo: "Cliente avisada da entrada no grupo",
-    ajuda: "Ninguém é adicionado de surpresa.",
-    campo: "data",
-    rotulo: "Data do contato",
-  },
-  {
-    chave: "boasvindas",
-    titulo: "Boas-vindas dadas e equipe apresentada",
-    campo: "data",
-    rotulo: "Data",
-  },
-  {
-    chave: "reuniao",
-    titulo: "Reunião de pontapé marcada",
-    ajuda: "Com a cliente, e já confirmada.",
-    campo: "datahora",
-    rotulo: "Data e hora",
-  },
-  {
-    chave: "briefing",
-    titulo: "Briefing criado e adequado à cliente",
-    campo: "texto",
-    rotulo: "Link do formulário",
-    confirmacao: "Reli o formulário e não há menção a outros clientes.",
-  },
-];
-
-const NOTA_MODALIDADE: Record<string, string> = {
-  branding: "Branding completo. Confira se este projeto tem naming antes de montar as datas.",
-  visual: "Comunicação visual. Cinco fases, sem etapa de naming.",
-  excepcional: "Excepcional. As fases são livres, defina-as conforme o escopo contratado.",
-};
-
-function itemCumprido(def: DefAbertura, it: ItemAbertura | undefined): boolean {
-  if (!it?.feito) return false;
-  if (def.confirmacao && !it.confirmado) return false;
-  return true;
-}
-
-export function statusAbertura(p: ProjetoDB) {
-  const mapa = new Map(p.abertura.map((i) => [i.chave, i]));
-  const pendentes: string[] = [];
-  let feitos = 0;
-  ABERTURA.forEach((def) => {
-    if (itemCumprido(def, mapa.get(def.chave))) feitos++;
-    else pendentes.push(def.titulo);
-  });
-  return { feitos, total: ABERTURA.length, completa: pendentes.length === 0, pendentes };
-}
-
 function dCurto(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso + "T00:00:00");
@@ -161,121 +71,26 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
   const [filtroPessoa, setFiltroPessoa] = useState<string>("");
   const [modalCad, setModalCad] = useState(false);
   const [detalhe, setDetalhe] = useState<ProjetoDB | null>(null);
-  const [travado, setTravado] = useState<ProjetoDB | null>(null);
-
-  // rolagem lateral do quadro
-  const boardRef = useRef<HTMLDivElement | null>(null);
-  const trilhoRef = useRef<HTMLDivElement | null>(null);
-  const [barra, setBarra] = useState({ larg: 1, pos: 0 });
-  const [podeEsq, setPodeEsq] = useState(false);
-  const [podeDir, setPodeDir] = useState(false);
 
   const tipos: [string, string][] = [
     ["todos", "Todos"], ["branding", "Branding"],
     ["visual", "Comunicação visual"], ["excepcional", "Excepcionais"],
   ];
 
-  // os dois filtros valem ao mesmo tempo: tipo E pessoa
   const visiveis = projetos.filter((p) => {
-    const okTipo = filtro === "todos" || p.tipo === filtro;
-    const okPessoa = !filtroPessoa || p.participantes.includes(filtroPessoa);
-    return okTipo && okPessoa;
+    if (filtroPessoa) return p.participantes.includes(filtroPessoa);
+    return filtro === "todos" || p.tipo === filtro;
   });
 
-  const temFiltro = filtro !== "todos" || filtroPessoa !== "";
-
-  // com um tipo escolhido, as colunas ganham o nome real das fases —
-  // mesmo que haja também um filtro de pessoa aplicado.
   let colunas: string[];
-  if (filtro === "todos") {
-    const maxF = Math.max(1, ...visiveis.map((p) => p.fases.length || 0));
+  if (filtroPessoa || filtro === "todos") {
+    const maxF = Math.max(7, ...visiveis.map((p) => p.fases.length || 0));
     colunas = Array.from({ length: maxF }, (_, i) => `Etapa ${i + 1}`);
   } else {
     colunas = FASES_PADRAO[filtro];
   }
 
-  // Em que coluna cada cartão entra.
-  //
-  // Um projeto pode ter pulado fases no cadastro (uma marca sem naming, por
-  // exemplo). Nesse caso a posição da fase dentro do projeto — o fase_atual —
-  // não corresponde à posição dela na lista completa do tipo: a 6ª fase de um
-  // projeto sem naming é a 7ª da lista padrão. Por isso, quando as colunas têm
-  // nome de fase, o encaixe é feito pelo NOME da fase atual, não pelo número.
-  // Só no modo "Todos", em que as colunas são "Etapa 1, 2, 3…", o número vale.
-  const colunaDoProjeto = new Map<string, number>();
-  visiveis.forEach((p) => {
-    const atual = p.fases.find((f) => f.ordem === p.fase_atual);
-    let idx = -1;
-    if (filtro !== "todos" && atual) idx = colunas.indexOf(atual.nome);
-    if (idx < 0) idx = Math.min(Math.max(p.fase_atual, 0), colunas.length - 1);
-    colunaDoProjeto.set(p.id, idx);
-  });
-
-  const medir = useCallback(() => {
-    const el = boardRef.current;
-    if (!el) { setPodeEsq(false); setPodeDir(false); return; }
-    const total = el.scrollWidth || 1;
-    setBarra({ larg: Math.min(1, el.clientWidth / total), pos: el.scrollLeft / total });
-    setPodeEsq(el.scrollLeft > 4);
-    setPodeDir(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  }, []);
-
-  useEffect(() => {
-    medir();
-    const el = boardRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => medir());
-    ro.observe(el);
-    window.addEventListener("resize", medir);
-    return () => { ro.disconnect(); window.removeEventListener("resize", medir); };
-  }, [medir, colunas.length, visiveis.length]);
-
-  // arrastar a barra de cima move o quadro junto
-  function arrastarBarra(e: React.PointerEvent<HTMLDivElement>) {
-    e.preventDefault();
-    e.stopPropagation();
-    const trilho = trilhoRef.current;
-    const board = boardRef.current;
-    if (!trilho || !board) return;
-    const alvo = e.currentTarget;
-    const xInicial = e.clientX;
-    const scrollInicial = board.scrollLeft;
-    const razao = board.scrollWidth / (trilho.clientWidth || 1);
-    const aoMover = (ev: PointerEvent) => {
-      board.scrollLeft = scrollInicial + (ev.clientX - xInicial) * razao;
-    };
-    const aoSoltar = (ev: PointerEvent) => {
-      alvo.removeEventListener("pointermove", aoMover);
-      alvo.removeEventListener("pointerup", aoSoltar);
-      alvo.removeEventListener("pointercancel", aoSoltar);
-      try { alvo.releasePointerCapture(ev.pointerId); } catch { /* ignora */ }
-    };
-    alvo.setPointerCapture(e.pointerId);
-    alvo.addEventListener("pointermove", aoMover);
-    alvo.addEventListener("pointerup", aoSoltar);
-    alvo.addEventListener("pointercancel", aoSoltar);
-  }
-
-  // clicar em um ponto da barra salta o quadro para lá
-  function saltarNoTrilho(e: React.PointerEvent<HTMLDivElement>) {
-    const trilho = trilhoRef.current;
-    const board = boardRef.current;
-    if (!trilho || !board) return;
-    const r = trilho.getBoundingClientRect();
-    const fracao = (e.clientX - r.left) / (r.width || 1);
-    board.scrollTo({ left: fracao * board.scrollWidth - board.clientWidth / 2, behavior: "smooth" });
-  }
-
-  function rolarColuna(dir: number) {
-    boardRef.current?.scrollBy({ left: dir * PASSO_COLUNA, behavior: "smooth" });
-  }
-
   async function mover(p: ProjetoDB, dir: number) {
-    // Avançar exige a abertura concluída. Voltar é sempre livre.
-    if (dir > 0 && !p.aberturaLiberada && !statusAbertura(p).completa) {
-      setTravado(p);
-      return;
-    }
     const nova = Math.max(0, Math.min(p.fases.length - 1, p.fase_atual + dir));
     if (nova === p.fase_atual) return;
     await fetch("/api/projetos", {
@@ -286,15 +101,13 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
     router.refresh();
   }
 
-  const rolavel = podeEsq || podeDir;
-
   return (
     <div className="kb">
       <div className="kb-topo">
         <div className="kb-filtros">
           {tipos.map(([v, l]) => (
-            <button key={v} className={`kb-chip ${filtro === v ? "on" : ""}`}
-              onClick={() => setFiltro(v)}>
+            <button key={v} className={`kb-chip ${filtro === v && !filtroPessoa ? "on" : ""}`}
+              onClick={() => { setFiltro(v); setFiltroPessoa(""); }}>
               {l}
             </button>
           ))}
@@ -306,100 +119,50 @@ export default function KanbanProjetos({ projetos, pessoas, papel, autor }: { pr
         <span className="kb-filtros-label">Por pessoa:</span>
         {pessoas.map((pe) => (
           <button key={pe.id} className={`kb-chip pessoa ${filtroPessoa === pe.nome ? "on" : ""}`}
-            onClick={() => setFiltroPessoa(filtroPessoa === pe.nome ? "" : pe.nome)}>
+            onClick={() => {
+              if (filtroPessoa === pe.nome) { setFiltroPessoa(""); }
+              else { setFiltroPessoa(pe.nome); setFiltro("todos"); }
+            }}>
             {pe.nome}
           </button>
         ))}
-      </div>
-
-      <div className="kb-resumo-filtros">
-        <span className="kb-resumo-txt">
-          {temFiltro ? (
-            <>
-              Mostrando <strong>{visiveis.length}</strong> de {projetos.length} projetos ·{" "}
-              {filtro === "todos" ? "todos os tipos" : TIPO_LABEL[filtro]}
-              {filtroPessoa ? ` · ${filtroPessoa}` : ""}
-            </>
-          ) : (
-            <>Mostrando todos os <strong>{projetos.length}</strong> projetos.</>
-          )}
-        </span>
-        {temFiltro && (
-          <button className="kb-chip limpar" onClick={() => { setFiltro("todos"); setFiltroPessoa(""); }}>
-            × limpar filtros
-          </button>
+        {filtroPessoa && (
+          <button className="kb-chip limpar" onClick={() => setFiltroPessoa("")}>× limpar</button>
         )}
       </div>
 
       {visiveis.length === 0 ? (
-        <p className="kb-vazio-geral">
-          {temFiltro
-            ? "Nenhum projeto com essa combinação de filtros. Troque o tipo ou a pessoa, ou clique em “limpar filtros”."
-            : "Nenhum projeto ainda. Clique em “+ Novo projeto” para começar."}
-        </p>
+        <p className="kb-vazio-geral">Nenhum projeto ainda. Clique em “+ Novo projeto” para começar.</p>
       ) : (
-        <div className="kb-board-wrap">
-          {rolavel && (
-            <>
-              <div className="kb-rolagem">
-                <span className="kb-rolagem-dica">↔ Role para o lado para ver todas as etapas</span>
-                <div className="kb-rolagem-setas">
-                  <button type="button" onClick={() => rolarColuna(-1)} disabled={!podeEsq} aria-label="Etapas anteriores">←</button>
-                  <button type="button" onClick={() => rolarColuna(1)} disabled={!podeDir} aria-label="Próximas etapas">→</button>
+        <div className="kb-board">
+          {colunas.map((nomeCol, idx) => {
+            const naColuna = visiveis.filter((p) => p.fase_atual === idx);
+            return (
+              <div className="kb-coluna" key={idx}>
+                <div className="kb-coluna-head">
+                  <span className="kb-coluna-nome">{nomeCol}</span>
+                  <span className="kb-coluna-num">{naColuna.length}</span>
                 </div>
+                {naColuna.length ? (
+                  naColuna.map((p) => (
+                    <Cartao key={p.id} p={p} onAbrir={() => setDetalhe(p)} onMover={mover} />
+                  ))
+                ) : (
+                  <div className="kb-vazia">—</div>
+                )}
               </div>
-              <div className="kb-trilho" ref={trilhoRef} onPointerDown={saltarNoTrilho}
-                role="scrollbar" aria-label="Rolagem lateral do quadro" aria-orientation="horizontal">
-                <div className="kb-trilho-barra" onPointerDown={arrastarBarra}
-                  style={{ width: `${Math.max(barra.larg * 100, 8)}%`, left: `${barra.pos * 100}%` }} />
-              </div>
-            </>
-          )}
-
-          <div className={`kb-board-area${podeEsq ? " corte-esq" : ""}${podeDir ? " corte-dir" : ""}`}>
-            <div className="kb-board" ref={boardRef}
-              onScroll={medir}>
-              {colunas.map((nomeCol, idx) => {
-                const naColuna = visiveis.filter((p) => colunaDoProjeto.get(p.id) === idx);
-                return (
-                  <div className="kb-coluna" key={idx}>
-                    <div className="kb-coluna-head">
-                      <span className="kb-coluna-nome">{nomeCol}</span>
-                      <span className="kb-coluna-num">{naColuna.length}</span>
-                    </div>
-                    {naColuna.length ? (
-                      naColuna.map((p) => (
-                        <Cartao key={p.id} p={p} onAbrir={() => setDetalhe(p)} onMover={mover} />
-                      ))
-                    ) : (
-                      <div className="kb-vazia">—</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {modalCad && <ModalCadastro pessoas={pessoas} autor={autor} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
-      {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} autor={autor} onFechar={() => { setDetalhe(null); router.refresh(); }} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
-      {travado && (
-        <ModalTrava
-          p={travado}
-          autor={autor}
-          onFechar={() => setTravado(null)}
-          onAbrirProjeto={() => { const alvo = travado; setTravado(null); setDetalhe(alvo); }}
-          onLiberado={() => { setTravado(null); router.refresh(); }}
-        />
-      )}
+      {modalCad && <ModalCadastro pessoas={pessoas} onFechar={() => setModalCad(false)} onSalvo={() => { setModalCad(false); router.refresh(); }} />}
+      {detalhe && <ModalDetalhe p={detalhe} papel={papel} pessoas={pessoas} autor={autor} onFechar={() => setDetalhe(null)} onSalvo={() => { setDetalhe(null); router.refresh(); }} />}
     </div>
   );
 }
 
 function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; onMover: (p: ProjetoDB, dir: number) => void }) {
-  const ab = statusAbertura(p);
-  const aberturaPendente = !p.aberturaLiberada && !ab.completa;
   const faseAtual = p.fases.find((f) => f.ordem === p.fase_atual);
   const periodo = faseAtual ? `${dCurto(faseAtual.inicio)} – ${dCurto(faseAtual.fim)}` : "—";
   const podeVoltar = p.fase_atual > 0;
@@ -410,9 +173,6 @@ function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; on
     <div className={`kb-card ${p.tipo}`} onClick={onAbrir}>
       <div className="kb-card-tipo">{TIPO_LABEL[p.tipo]}</div>
       <div className="kb-card-nome">{p.nome}</div>
-      {aberturaPendente && (
-        <div className="kb-selo-abertura">Abertura {ab.feitos}/{ab.total}</div>
-      )}
       {faseAtual && <div className="kb-card-fase">{faseAtual.nome}</div>}
       <div className="kb-card-meta">
         <span className="kb-card-cliente">{p.cliente || "—"}</span>
@@ -433,23 +193,13 @@ function Cartao({ p, onAbrir, onMover }: { p: ProjetoDB; onAbrir: () => void; on
       )}
       <div className="kb-card-mover" onClick={(e) => e.stopPropagation()}>
         <button onClick={() => onMover(p, -1)} disabled={!podeVoltar}>←</button>
-        <button
-          className={aberturaPendente ? "travado" : ""}
-          title={aberturaPendente ? "Conclua o checklist de abertura para avançar" : undefined}
-          onClick={() => onMover(p, 1)}
-          disabled={!podeAvancar}
-        >
-          {aberturaPendente ? "Avançar" : "Avançar →"}
-        </button>
+        <button onClick={() => onMover(p, 1)} disabled={!podeAvancar}>Avançar →</button>
       </div>
     </div>
   );
 }
 
-function ModalCadastro({ pessoas, autor, onFechar, onSalvo }: { pessoas: Pessoa[]; autor: string; onFechar: () => void; onSalvo: () => void }) {
-  // Duas etapas: primeiro o checklist de abertura, depois o cadastro.
-  const [passo, setPasso] = useState<1 | 2>(1);
-
+function ModalCadastro({ pessoas, onFechar, onSalvo }: { pessoas: Pessoa[]; onFechar: () => void; onSalvo: () => void }) {
   const [nome, setNome] = useState("");
   const [cliente, setCliente] = useState("");
   const [tipo, setTipo] = useState<"branding" | "visual" | "excepcional">("branding");
@@ -458,45 +208,15 @@ function ModalCadastro({ pessoas, autor, onFechar, onSalvo }: { pessoas: Pessoa[
   const [datas, setDatas] = useState<{ inicio: string; fim: string }[]>(
     FASES_PADRAO["branding"].map(() => ({ inicio: "", fim: "" }))
   );
-
-  type Marca = { feito: boolean; valor: string; confirmado: boolean };
-  const [itens, setItens] = useState<Record<string, Marca>>({});
-  const [pedindoMotivo, setPedindoMotivo] = useState(false);
-  const [motivo, setMotivo] = useState("");
-
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const fases = FASES_PADRAO[tipo];
 
-  function marca(chave: string): Marca {
-    return itens[chave] || { feito: false, valor: "", confirmado: false };
-  }
-  function mudar(chave: string, m: Partial<Marca>) {
-    setItens((prev) => ({ ...prev, [chave]: { ...marca(chave), ...m } }));
-  }
-
-  const faltando = ABERTURA.filter((def) => {
-    const it = marca(def.chave);
-    if (!it.feito) return true;
-    if (def.confirmacao && !it.confirmado) return true;
-    return false;
-  });
-
   function trocarTipo(novo: "branding" | "visual" | "excepcional") {
     setTipo(novo);
     setMarcadas(FASES_PADRAO[novo].map(() => true));
     setDatas(FASES_PADRAO[novo].map(() => ({ inicio: "", fim: "" })));
-  }
-
-  function avancar(comMotivo: boolean) {
-    if (!nome.trim()) { setErro("Dê um nome ao projeto."); return; }
-    if (comMotivo && motivo.trim().length < 10) {
-      setErro("Escreva o motivo com pelo menos uma frase.");
-      return;
-    }
-    setErro(null);
-    setPasso(2);
   }
 
   async function salvar() {
@@ -512,18 +232,7 @@ function ModalCadastro({ pessoas, autor, onFechar, onSalvo }: { pessoas: Pessoa[
       const res = await fetch("/api/projetos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          acao: "criar",
-          nome, cliente, tipo,
-          fases: fasesSel,
-          participantes,
-          autor,
-          justificativa: faltando.length > 0 ? motivo.trim() : null,
-          abertura: ABERTURA.map((def) => {
-            const it = marca(def.chave);
-            return { chave: def.chave, feito: it.feito, valor: it.valor || null, confirmado: it.confirmado };
-          }),
-        }),
+        body: JSON.stringify({ acao: "criar", nome, cliente, tipo, fases: fasesSel, participantes }),
       });
       const d = await res.json();
       if (res.ok) onSalvo();
@@ -539,161 +248,69 @@ function ModalCadastro({ pessoas, autor, onFechar, onSalvo }: { pessoas: Pessoa[
     <div className="kb-overlay" onClick={onFechar}>
       <div className="kb-modal" onClick={(e) => e.stopPropagation()}>
         <div className="kb-modal-head">
-          <h2>{passo === 1 ? "Abertura do projeto" : "Cadastro do projeto"}</h2>
-          <span className="kb-passo">Etapa {passo} de 2</span>
+          <h2>Novo projeto</h2>
           <button className="kb-modal-x" onClick={onFechar}>×</button>
         </div>
-
         <div className="kb-modal-body">
-          {passo === 1 ? (
-            <>
-              <label className="kb-label">Nome do projeto
-                <input className="kb-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ateliê Ravena" />
-              </label>
-              <div className="kb-dupla">
-                <label className="kb-label">Cliente
-                  <input className="kb-input" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Ex.: Ateliê Ravena" />
-                </label>
-                <label className="kb-label">Modalidade
-                  <select className="kb-input" value={tipo} onChange={(e) => trocarTipo(e.target.value as any)}>
-                    <option value="branding">Branding completo</option>
-                    <option value="visual">Comunicação visual</option>
-                    <option value="excepcional">Excepcional</option>
-                  </select>
-                </label>
-              </div>
+          <label className="kb-label">Nome do projeto
+            <input className="kb-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Rebranding Encaixe Móveis" />
+          </label>
+          <label className="kb-label">Cliente
+            <input className="kb-input" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Ex.: Encaixe Móveis" />
+          </label>
+          <label className="kb-label">Tipo de projeto
+            <select className="kb-input" value={tipo} onChange={(e) => trocarTipo(e.target.value as any)}>
+              <option value="branding">Branding completo</option>
+              <option value="visual">Comunicação visual</option>
+              <option value="excepcional">Excepcional</option>
+            </select>
+          </label>
+          <div className="kb-label">Participantes do projeto</div>
+          <div className="kb-parts-sel">
+            {pessoas.length === 0 && <span className="kb-dica">Nenhuma pessoa cadastrada.</span>}
+            {pessoas.map((pe) => {
+              const on = participantes.includes(pe.id);
+              return (
+                <button
+                  type="button"
+                  key={pe.id}
+                  className={`kb-part-chip ${on ? "on" : ""}`}
+                  onClick={() => {
+                    setParticipantes((prev) =>
+                      prev.includes(pe.id) ? prev.filter((x) => x !== pe.id) : [...prev, pe.id]
+                    );
+                  }}
+                >
+                  {on ? "✓ " : ""}{pe.nome}
+                </button>
+              );
+            })}
+          </div>
 
-              <div className={`ab-barra ${faltando.length === 0 ? "ok" : ""}`}>
-                <div className="ab-barra-txt">
-                  {faltando.length === 0
-                    ? "Tudo pronto. Pode avançar para o cadastro."
-                    : `Antes de abrir o projeto: ${ABERTURA.length - faltando.length} de ${ABERTURA.length}.`}
-                </div>
-                <div className="ab-barra-trilho">
-                  <div className="ab-barra-cheio" style={{ width: `${((ABERTURA.length - faltando.length) / ABERTURA.length) * 100}%` }} />
-                </div>
+          <div className="kb-label">Fases e cronograma</div>
+          <div className="kb-fases-cad">
+            <div className="kb-datas-labels"><span>Início</span><span>Fim/apres.</span></div>
+            {fases.map((f, i) => (
+              <div className={`kb-fase-cad ${marcadas[i] ? "ativa" : "inativa"}`} key={i}>
+                <input type="checkbox" checked={marcadas[i]} onChange={() => {
+                  const m = [...marcadas]; m[i] = !m[i]; setMarcadas(m);
+                }} />
+                <span className="kb-fase-cad-nome">{f}</span>
+                <input type="date" disabled={!marcadas[i]} value={datas[i].inicio}
+                  onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], inicio: e.target.value }; setDatas(d); }} />
+                <input type="date" disabled={!marcadas[i]} value={datas[i].fim}
+                  onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], fim: e.target.value }; setDatas(d); }} />
               </div>
-
-              <div className="ab-lista">
-                {ABERTURA.map((def) => {
-                  const it = marca(def.chave);
-                  const ok = it.feito && (!def.confirmacao || it.confirmado);
-                  return (
-                    <div className={`ab-item ${ok ? "feito" : ""}`} key={def.chave}>
-                      <button type="button" className={`ab-check ${ok ? "on" : ""}`} aria-label={def.titulo}
-                        onClick={() => mudar(def.chave, { feito: !it.feito })}>
-                        {ok ? "✓" : ""}
-                      </button>
-                      <div className="ab-corpo">
-                        <div className="ab-titulo">{def.titulo}</div>
-                        {def.ajuda && <div className="ab-ajuda">{def.ajuda}</div>}
-                        {def.campo && (
-                          <label className="ab-campo">
-                            <span>{def.rotulo}</span>
-                            <input
-                              type={def.campo === "data" ? "date" : def.campo === "datahora" ? "datetime-local" : "text"}
-                              value={it.valor}
-                              placeholder={def.campo === "texto" ? "Cole aqui" : undefined}
-                              onChange={(e) => mudar(def.chave, { valor: e.target.value })}
-                            />
-                          </label>
-                        )}
-                        {def.confirmacao && (
-                          <label className="ab-confirma">
-                            <input type="checkbox" checked={it.confirmado}
-                              onChange={() => mudar(def.chave, { confirmado: !it.confirmado })} />
-                            <span>{def.confirmacao}</span>
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {faltando.length > 0 && (
-                <div className="ab-excecao">
-                  {!pedindoMotivo ? (
-                    <button className="kb-link-edit" onClick={() => setPedindoMotivo(true)}>
-                      É uma exceção e preciso seguir mesmo assim
-                    </button>
-                  ) : (
-                    <>
-                      <p className="kb-dica" style={{ marginTop: 0 }}>
-                        Escreva o motivo. Ele fica registrado no projeto e entra no histórico, visível para o gestor.
-                      </p>
-                      <textarea className="kb-textarea" value={motivo} onChange={(e) => setMotivo(e.target.value)}
-                        placeholder="Ex.: cliente antecipou a reunião para hoje, o briefing será enviado ainda esta tarde." />
-                      <button className="kb-btn-ghost" style={{ marginTop: 10 }} onClick={() => avancar(true)}>
-                        Avançar com justificativa
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-              {erro && <p className="kb-erro">{erro}</p>}
-            </>
-          ) : (
-            <>
-              <div className="kb-resumo-passo">
-                <strong>{nome}</strong>{cliente ? ` · ${cliente}` : ""} · {TIPO_LABEL[tipo]}
-              </div>
-
-              <div className="kb-label">Participantes do projeto</div>
-              <div className="kb-parts-sel">
-                {pessoas.length === 0 && <span className="kb-dica">Nenhuma pessoa cadastrada.</span>}
-                {pessoas.map((pe) => {
-                  const on = participantes.includes(pe.id);
-                  return (
-                    <button type="button" key={pe.id} className={`kb-part-chip ${on ? "on" : ""}`}
-                      onClick={() => setParticipantes((prev) => prev.includes(pe.id) ? prev.filter((x) => x !== pe.id) : [...prev, pe.id])}>
-                      {on ? "✓ " : ""}{pe.nome}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="kb-label">Fases e cronograma</div>
-              <div className="ab-nota" style={{ marginTop: 0, marginBottom: 10 }}>{NOTA_MODALIDADE[tipo]}</div>
-              <div className="kb-fases-cad">
-                <div className="kb-datas-labels"><span>Início</span><span>Fim/apres.</span></div>
-                {fases.map((f, i) => (
-                  <div className={`kb-fase-cad ${marcadas[i] ? "ativa" : "inativa"}`} key={i}>
-                    <input type="checkbox" checked={marcadas[i]} onChange={() => {
-                      const m = [...marcadas]; m[i] = !m[i]; setMarcadas(m);
-                    }} />
-                    <span className="kb-fase-cad-nome">{f}</span>
-                    <input type="date" disabled={!marcadas[i]} value={datas[i].inicio}
-                      onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], inicio: e.target.value }; setDatas(d); }} />
-                    <input type="date" disabled={!marcadas[i]} value={datas[i].fim}
-                      onChange={(e) => { const d = [...datas]; d[i] = { ...d[i], fim: e.target.value }; setDatas(d); }} />
-                  </div>
-                ))}
-              </div>
-              <p className="kb-dica">Desmarque as fases que este projeto não terá. A data de fim costuma ser o dia da apresentação ao cliente, e tudo pode ser ajustado depois.</p>
-              {erro && <p className="kb-erro">{erro}</p>}
-            </>
-          )}
+            ))}
+          </div>
+          <p className="kb-dica">Marque as fases que este projeto terá e defina início e fim de cada uma. A data de fim costuma ser o dia da apresentação ao cliente. Tudo pode ser ajustado depois.</p>
+          {erro && <p className="kb-erro">{erro}</p>}
         </div>
-
         <div className="kb-modal-foot">
-          {passo === 1 ? (
-            <>
-              <button className="kb-btn-ghost" onClick={onFechar}>Cancelar</button>
-              <button className="kb-btn-primary" onClick={() => avancar(false)}
-                disabled={faltando.length > 0 || !nome.trim()}
-                title={faltando.length > 0 ? "Conclua o checklist para avançar" : undefined}>
-                Avançar →
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="kb-btn-ghost" onClick={() => setPasso(1)}>← Voltar</button>
-              <button className="kb-btn-primary" onClick={salvar} disabled={salvando}>
-                {salvando ? "Abrindo…" : "Abrir projeto"}
-              </button>
-            </>
-          )}
+          <button className="kb-btn-ghost" onClick={onFechar}>Cancelar</button>
+          <button className="kb-btn-primary" onClick={salvar} disabled={salvando}>
+            {salvando ? "Salvando…" : "Cadastrar projeto"}
+          </button>
         </div>
       </div>
     </div>
@@ -701,11 +318,7 @@ function ModalCadastro({ pessoas, autor, onFechar, onSalvo }: { pessoas: Pessoa[
 }
 
 function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: ProjetoDB; papel: "gestor" | "equipe" | null; pessoas: Pessoa[]; autor: string; onFechar: () => void; onSalvo: () => void }) {
-  const abInicial = statusAbertura(p);
-  const aberturaPendente = !p.aberturaLiberada && !abInicial.completa;
-  const [aba, setAba] = useState<"gestao" | "abertura" | "financeiro">(
-    aberturaPendente ? "abertura" : "gestao"
-  );
+  const [aba, setAba] = useState<"gestao" | "financeiro">("gestao");
   const [novaObs, setNovaObs] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -776,10 +389,6 @@ function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: Proj
           {!editando && (
             <div className="kb-abas">
               <button className={`kb-aba ${aba === "gestao" ? "on" : ""}`} onClick={() => setAba("gestao")}>Gestão</button>
-              <button className={`kb-aba ${aba === "abertura" ? "on" : ""}`} onClick={() => setAba("abertura")}>
-                Abertura
-                {aberturaPendente && <span className="kb-aba-selo">{abInicial.feitos}/{abInicial.total}</span>}
-              </button>
               {ehGestor && (
                 <button className={`kb-aba ${aba === "financeiro" ? "on" : ""}`} onClick={() => setAba("financeiro")}>Financeiro</button>
               )}
@@ -825,8 +434,6 @@ function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: Proj
                 </button>
               </div>
             </>
-          ) : aba === "abertura" ? (
-            <AbaAbertura p={p} autor={autor} />
           ) : aba === "gestao" ? (
             <>
               <div className="kb-det-info">
@@ -882,193 +489,6 @@ function ModalDetalhe({ p, papel, pessoas, autor, onFechar, onSalvo }: { p: Proj
           ) : (
             <Financeiro projetoId={p.id} onSalvo={onSalvo} />
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ————————————————————————————————————————————————————————————
-// Aba de abertura: o checklist do executivo de contas
-// ————————————————————————————————————————————————————————————
-function AbaAbertura({ p, autor }: { p: ProjetoDB; autor: string }) {
-  const [itens, setItens] = useState<Record<string, ItemAbertura>>(() => {
-    const r: Record<string, ItemAbertura> = {};
-    p.abertura.forEach((i) => { r[i.chave] = i; });
-    return r;
-  });
-  const [salvando, setSalvando] = useState<string | null>(null);
-
-  function vazio(chave: string): ItemAbertura {
-    return { chave, feito: false, valor: null, confirmado: false, autor: null, feito_em: null };
-  }
-
-  async function salvar(chave: string, mudanca: Partial<ItemAbertura>) {
-    const novo = { ...(itens[chave] || vazio(chave)), ...mudanca };
-    setItens((prev) => ({ ...prev, [chave]: novo }));
-    setSalvando(chave);
-    await fetch("/api/projetos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        acao: "abertura_set",
-        projeto_id: p.id,
-        chave,
-        feito: novo.feito,
-        valor: novo.valor,
-        confirmado: novo.confirmado,
-        autor,
-      }),
-    });
-    setSalvando(null);
-  }
-
-  const simulado: ProjetoDB = { ...p, abertura: Object.values(itens) };
-  const st = statusAbertura(simulado);
-
-  return (
-    <div className="ab">
-      <div className={`ab-barra ${st.completa ? "ok" : ""}`}>
-        <div className="ab-barra-txt">
-          {st.completa
-            ? "Abertura concluída. Esta aba guarda o que foi feito e onde encontrar cada coisa."
-            : `Abertura ${st.feitos} de ${st.total}. Enquanto não estiver completa, o projeto não avança de fase.`}
-        </div>
-        <div className="ab-barra-trilho">
-          <div className="ab-barra-cheio" style={{ width: `${(st.feitos / st.total) * 100}%` }} />
-        </div>
-      </div>
-
-      {p.aberturaLiberada && p.aberturaJustificativa && (
-        <div className="ab-liberado">
-          <strong>Avanço liberado sem a abertura completa.</strong> {p.aberturaJustificativa}
-        </div>
-      )}
-
-      <div className="ab-lista">
-        {ABERTURA.map((def) => {
-          const it = itens[def.chave] || vazio(def.chave);
-          const feito = itemCumprido(def, it);
-          return (
-            <div className={`ab-item ${feito ? "feito" : ""}`} key={def.chave}>
-              <button
-                type="button"
-                className={`ab-check ${feito ? "on" : ""}`}
-                aria-label={def.titulo}
-                onClick={() => salvar(def.chave, { feito: !it.feito })}
-              >
-                {feito ? "✓" : ""}
-              </button>
-
-              <div className="ab-corpo">
-                <div className="ab-titulo">{def.titulo}</div>
-
-                {def.ajuda && <div className="ab-ajuda">{def.ajuda}</div>}
-
-                {def.campo && (
-                  <label className="ab-campo">
-                    <span>{def.rotulo}</span>
-                    <input
-                      type={def.campo === "data" ? "date" : def.campo === "datahora" ? "datetime-local" : "text"}
-                      value={it.valor || ""}
-                      placeholder={def.campo === "texto" ? "Cole aqui" : undefined}
-                      onChange={(e) => salvar(def.chave, { valor: e.target.value })}
-                    />
-                  </label>
-                )}
-
-                {def.confirmacao && (
-                  <label className="ab-confirma">
-                    <input
-                      type="checkbox"
-                      checked={!!it.confirmado}
-                      onChange={() => salvar(def.chave, { confirmado: !it.confirmado })}
-                    />
-                    <span>{def.confirmacao}</span>
-                  </label>
-                )}
-
-                {it.feito && it.autor && (
-                  <div className="ab-assinatura">
-                    marcado por {it.autor}{it.feito_em ? ` em ${dataHora(it.feito_em)}` : ""}
-                  </div>
-                )}
-                {salvando === def.chave && <div className="ab-assinatura">salvando…</div>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ————————————————————————————————————————————————————————————
-// Aviso de trava: aparece ao tentar avançar com a abertura incompleta
-// ————————————————————————————————————————————————————————————
-function ModalTrava({ p, autor, onFechar, onAbrirProjeto, onLiberado }: {
-  p: ProjetoDB; autor: string; onFechar: () => void;
-  onAbrirProjeto: () => void; onLiberado: () => void;
-}) {
-  const st = statusAbertura(p);
-  const [motivo, setMotivo] = useState("");
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  async function liberar() {
-    if (motivo.trim().length < 10) {
-      setErro("Escreva o motivo com pelo menos uma frase.");
-      return;
-    }
-    setErro(null);
-    setSalvando(true);
-    const res = await fetch("/api/projetos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: "abertura_liberar", id: p.id, justificativa: motivo, autor }),
-    });
-    setSalvando(false);
-    if (res.ok) onLiberado();
-    else setErro("Não foi possível liberar. Tente de novo.");
-  }
-
-  return (
-    <div className="kb-overlay" onClick={onFechar}>
-      <div className="kb-modal estreito" onClick={(e) => e.stopPropagation()}>
-        <div className="kb-modal-head">
-          <h2>Abertura incompleta</h2>
-          <button className="kb-modal-x" onClick={onFechar}>×</button>
-        </div>
-        <div className="kb-modal-body">
-          <p className="ab-trava-lead">
-            <strong>{p.nome}</strong> ainda tem {st.pendentes.length}{" "}
-            {st.pendentes.length === 1 ? "item pendente" : "itens pendentes"} no checklist de
-            abertura. O caminho normal é concluir a abertura antes de avançar de fase.
-          </p>
-          <ul className="ab-pendentes">
-            {st.pendentes.map((t, i) => <li key={i}>{t}</li>)}
-          </ul>
-
-          <button className="kb-btn-primary" style={{ width: "100%" }} onClick={onAbrirProjeto}>
-            Concluir a abertura agora
-          </button>
-
-          <div className="ab-excecao">
-            <div className="kb-det-fases-titulo" style={{ marginTop: 0 }}>Se for mesmo uma exceção</div>
-            <p className="kb-dica" style={{ marginTop: 0 }}>
-              Escreva o motivo. Ele fica registrado no projeto e entra no histórico, visível para o gestor.
-            </p>
-            <textarea
-              className="kb-textarea"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Ex.: cliente antecipou a reunião para hoje, o formulário será enviado ainda esta tarde."
-            />
-            {erro && <p className="kb-erro">{erro}</p>}
-            <button className="kb-btn-ghost" style={{ marginTop: 10 }} onClick={liberar} disabled={salvando}>
-              {salvando ? "Liberando…" : "Avançar mesmo assim"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
